@@ -185,7 +185,7 @@ If you use HCSN-Theory in research, please cite the repo and include a reference
 
 ## License & Contact ⚖️
 
-This project is active research and published under (please add your preferred license e.g., MIT, BSD). For collaboration or questions, open an issue or contact the maintainers via GitHub: [hcsn-theory](https://github.com/hcsn-theory).
+This project is active research and published under Apache 2.0 licence. For collaboration or questions, open an issue or contact the maintainers via GitHub: [hcsn-theory](https://github.com/hcsn-theory).
 
 ---
 
