@@ -8,6 +8,32 @@ from engine.observables import (
     hierarchical_closure
 )
 
+import sys
+
+# --- Add this Logger Class ---
+class DualOutput:
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        # "a" mode appends to the file (keeping history)
+        self.log = open(filename, "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        # Flush immediately to update the file live
+        self.log.flush()
+        self.terminal.flush()
+
+    def flush(self):
+        # This flush method is needed for python 3 compatibility.
+        self.terminal.flush()
+        self.log.flush()
+
+# Redirect python's print to our new class
+sys.stdout = DualOutput("simulation.log")
+# -----------------------------
+
+
 # -----------------------------
 # Initialize universe
 # -----------------------------
@@ -29,10 +55,16 @@ last_L = H.max_chain_length()
 
 start_time = time.time()
 
+# --- ADD THESE LINES ---
+print("\n" + "="*86)
+print(f"RUN STARTED: {time.ctime()}")  # Prints: Sat Oct 27 10:30:00 2023
+print("="*86)
+# -----------------------
+
 print(
     " time |   V   |  <k>  | Δ<k> |  L  | ΔL |    Φ    |    Ψ    |    Ω    | acc%"
 )
-print("-" * 86)
+# ... rest of code ...
 
 # -----------------------------
 # Main evolution loop
