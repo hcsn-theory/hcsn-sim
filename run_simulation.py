@@ -1,4 +1,5 @@
 import time
+import json
 from engine.hypergraph import Hypergraph
 from engine.rewrite_engine import RewriteEngine
 from engine.observables import (
@@ -54,6 +55,13 @@ last_k = H.average_coordination()
 last_L = H.max_chain_length()
 last_omega = hierarchical_closure(H, worldline_interaction_graph(H))
 
+# -----------------------------
+# Time-series storage (FOR PLOTTING)
+# -----------------------------
+timeseries_t = []
+timeseries_k = []
+timeseries_omega = []
+
 start_time = time.time()
 
 # --- ADD THESE LINES ---
@@ -88,6 +96,11 @@ for step in range(1, 5001):
         
         omega = hierarchical_closure(H, inter)
         domega = omega - last_omega
+        
+        # >>> ADD THESE THREE LINES <<<
+        timeseries_t.append(engine.time)
+        timeseries_k.append(k)
+        timeseries_omega.append(omega)
 
         acc_ratio = accepted / max(accepted + rejected, 1)
 
@@ -137,3 +150,13 @@ if len(defects) > 1:
 
     print("\nFirst 10 spacings:")
     print(spacings[:10])
+
+with open("timeseries.json", "w") as f:
+    json.dump({
+        "t": timeseries_t,
+        "k": timeseries_k,
+        "omega": timeseries_omega,
+        "defects": engine.defect_log
+    }, f)
+
+print("Saved timeseries.json for plotting.")
