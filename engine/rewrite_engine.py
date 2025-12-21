@@ -102,8 +102,10 @@ class RewriteEngine:
             accept_prob *= math.exp(self.gamma_hier * delta_omega)
 
         # --- 5. Geometricity constraint (THIS is what you add) ---
+        V = len(self.H.vertices)
         k_target = 8.0
-        accept_prob *= math.exp(-0.1 * (k_after - k_target)**2)
+        lambda_k = 0.25 * (1 - math.exp(-V / 200))
+        accept_prob *= math.exp(-lambda_k * (k_after - k_target)**2)
 
         # --- 6. Accept or reject ---
         if random.random() > accept_prob:
