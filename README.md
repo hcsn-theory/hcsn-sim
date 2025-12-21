@@ -191,6 +191,7 @@ This project is active research and published under Apache 2.0 licence. For coll
 
 Philosophy
 > “The universe may not be described by computation — it may be computation.”
-> HCSN treats this as a testable hypothesis: build minimal computational rules and examine what emerges.
+---
+HCSN treats this as a testable hypothesis: build minimal computational rules and examine what emerges.
 
 Enjoy exploring! 🧩
