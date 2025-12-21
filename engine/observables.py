@@ -303,10 +303,10 @@ def defect_density(H):
         return 0.0
     return label_frustration(H) / len(H.hyperedges)
 
-"""
+
 def local_hierarchical_closure(H, inter, v_id, radius=2):
     
-    Local hierarchical closure around vertex v_id.
+    #Local hierarchical closure around vertex v_id.
     
     # 1. Find neighborhood
     frontier = {v_id}
@@ -333,4 +333,4 @@ def local_hierarchical_closure(H, inter, v_id, radius=2):
         H.from_subgraph(sub_vertices, sub_inter),
         sub_inter
     )
-"""    
+     

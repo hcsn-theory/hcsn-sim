@@ -70,7 +70,7 @@ print(
 # -----------------------------
 # Main evolution loop
 # -----------------------------
-for step in range(1, 10001):
+for step in range(1, 5001):
     success = engine.step()
     if success:
         accepted += 1
