@@ -1,5 +1,5 @@
 # engine/hypergraph.py
-
+import random
 import itertools
 from collections import defaultdict
 
@@ -48,6 +48,9 @@ class Hypergraph:
 
     def add_vertex(self):
         v = Vertex()
+        
+        #NEW: topological/charge-like label
+        v.label = random.choice([-1, +1])
         self.vertices[v.id] = v
         self.causal_order[v.id].add(v.id)  # reflexivity
         return v

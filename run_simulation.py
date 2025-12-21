@@ -52,6 +52,7 @@ accepted = 0
 rejected = 0
 last_k = H.average_coordination()
 last_L = H.max_chain_length()
+last_omega = hierarchical_closure(H, worldline_interaction_graph(H))
 
 start_time = time.time()
 
@@ -62,14 +63,14 @@ print("="*86)
 # -----------------------
 
 print(
-    " time |   V   |  <k>  | Δ<k> |  L  | ΔL |    Φ    |    Ψ    |    Ω    | acc%"
+    " time |   V   |  <k>  | Δ<k> |  L  | ΔL |    Φ    |    Ψ    |    Ω    | acc%   |   omega   |   domega"
 )
 # ... rest of code ...
 
 # -----------------------------
 # Main evolution loop
 # -----------------------------
-for step in range(1, 20001):
+for step in range(1, 10001):
     success = engine.step()
     if success:
         accepted += 1
@@ -84,6 +85,9 @@ for step in range(1, 20001):
 
         dk = k - last_k
         dL = L - last_L
+        
+        omega = hierarchical_closure(H, inter)
+        domega = omega - last_omega
 
         acc_ratio = accepted / max(accepted + rejected, 1)
 
@@ -97,11 +101,14 @@ for step in range(1, 20001):
             f"{interaction_concentration(inter):7.4f} | "
             f"{closure_density(inter):7.4f} | "
             f"{hierarchical_closure(H, inter):7.4f} | "
-            f"{acc_ratio:5.2%}"
+            f"{acc_ratio:5.2%}   | "
+            f"{omega:7.4f} | "
+            f"{domega:+7.4f} | "
         )
 
         last_k = k
         last_L = L
+        last_omega = omega
 
 end_time = time.time()
 
@@ -110,3 +117,23 @@ print(f"Total steps: {engine.time}")
 print(f"Accepted: {accepted}, Rejected: {rejected}")
 print(f"Acceptance ratio: {accepted / max(accepted + rejected,1):.3f}")
 print(f"Wall time: {end_time - start_time:.2f} s")
+print("\n================ DEFECT STATISTICS ================\n")
+
+defects = engine.defect_log
+
+print(f"Total defects detected: {len(defects)}")
+
+if len(defects) > 1:
+    times = [d["time"] for d in defects]
+    spacings = [times[i+1] - times[i] for i in range(len(times)-1)]
+
+    avg_spacing = sum(spacings) / len(spacings)
+    min_spacing = min(spacings)
+    max_spacing = max(spacings)
+
+    print(f"Average defect spacing: {avg_spacing:.2f} steps")
+    print(f"Min spacing: {min_spacing}")
+    print(f"Max spacing: {max_spacing}")
+
+    print("\nFirst 10 spacings:")
+    print(spacings[:10])

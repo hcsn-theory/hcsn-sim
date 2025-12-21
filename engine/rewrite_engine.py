@@ -27,7 +27,9 @@ class RewriteEngine:
         gamma_time=0.1,
         gamma_space=0.1,
         gamma_ext=0.05,
+        defect_log = [],
         gamma_closure=0.05,
+        epsilon_label_violation = 0.05,
         gamma_hier=0.06
     ):
         self.H = hypergraph
@@ -37,6 +39,8 @@ class RewriteEngine:
         self.gamma_ext = gamma_ext
         self.gamma_closure = gamma_closure
         self.gamma_hier = gamma_hier
+        self.defect_log = defect_log
+        self.epsilon_label_violation = epsilon_label_violation
         self.time = 0
 
         if seed is not None:
@@ -55,7 +59,8 @@ class RewriteEngine:
         omega_before = hierarchical_closure(self.H, inter_before)
 
         k_before = self.H.average_coordination()
-
+        
+        
         # --- 2. Propose rewrite ---
         if random.random() < self.p_create:
             undo = edge_creation_rule(self.H)
@@ -81,7 +86,28 @@ class RewriteEngine:
         delta_omega = omega_after - omega_before
 
         k_after = self.H.average_coordination()
+        
+        # --- Topological defect proxy (TEMPORARY) ---
+        delta_Q = delta_omega
 
+        if abs(delta_Q) > self.epsilon_label_violation:
+            event = {
+                "time": self.time,
+                "delta_Q": delta_Q,
+                "V": len(self.H.vertices),
+                "k": k_after,
+                "L": L_after,
+                "omega": omega_after
+            }
+            self.defect_log.append(event)
+
+            print(
+                f"*** DEFECT EVENT at t={self.time} | "
+                f"ΔQ={delta_Q:+.4e} | "
+                f"V={event['V']} | "
+                f"k={event['k']:.2f} ***"
+            )
+        
         # --- 4. Acceptance probability ---
         accept_prob = 1.0
 
@@ -106,6 +132,13 @@ class RewriteEngine:
         k_target = 8.0
         lambda_k = 0.25 * (1 - math.exp(-V / 200))
         accept_prob *= math.exp(-lambda_k * (k_after - k_target)**2)
+        
+        # --- 5b. Topological defect suppression (soft conservation) ---
+        gamma_defect = 0.15  # start small
+        
+        if abs(delta_Q) > self.epsilon_label_violation:
+            
+            accept_prob *= math.exp(-gamma_defect * abs(delta_Q))
 
         # --- 6. Accept or reject ---
         if random.random() > accept_prob:
