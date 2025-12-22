@@ -13,11 +13,10 @@ A computational approach to emergent spacetime, gravity, and quantum mechanics.
 
 ---
 
-
 Table of Contents
 - [Overview](#overview)
 - [Docs](#docs)
-- [Core Principles (Axioms)](#core-principles-axioms)
+- [Core Principles (Axioms)]((#core-principles-axioms))
 - [Repository Structure](#repository-structure)
 - [Quick Start](#quick-start)
 - [How to Run a Toy Universe](#how-to-run-a-toy-universe)
@@ -47,9 +46,10 @@ The long-term goal is to identify the minimal rule set that produces universes c
 ## Docs
 
 This is full Documentation of this theory.
-[Click here to read the Documentation](docs/hcsn-theory.md)
+[Click here to read the Documentation](docs/HCSN-Theory.md)
 
 ---
+
 
 ## Core Principles (Axioms) 🧭
 
