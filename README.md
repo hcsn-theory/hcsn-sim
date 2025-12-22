@@ -190,9 +190,9 @@ See `notebooks/` for visualization experiments and step-by-step explorations. If
 
 If you use HCSN-Theory in research, please cite the repo and include a reference to the simulation version/commit used. Consider adding a DOI via Zenodo for formal citation.
 
-If you use this theory or simulation code in your research, please cite it as follows:
+Please cite it as follows:
 
-> **QWERT, Q. (2025). The Holographic Computational Spin-Network (HCSN): Theory & Simulation (Version 1.0.0) [Computer software]. https://github.com/hcsn-theory/HCSN-Theory**
+> **HCSN-Theory, @hcsn. (2025). The Holographic Computational Spin-Network (HCSN): Theory & Simulation (Version 1.0.0) [Computer software]. https://github.com/hcsn-theory/HCSN-Theory**
 
 ### BibTeX Entry
 For LaTeX/Overleaf users:
