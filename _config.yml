@@ -1,0 +1,4 @@
+markdown: kramdown
+theme: jekyll-theme-slate  # Keep your existing theme line if you have one!
+kramdown:
+  math_engine: mathjax
