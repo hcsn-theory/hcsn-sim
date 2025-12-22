@@ -3,7 +3,8 @@ message: "If you use this theory or simulation code, please cite it as follows."
 authors:
   - family-names: "The HCSN Research Group"
     given-names: "@hcsn"
-    affiliation: "HCSN Research Group"
+    affiliation: "The HCSN Research Group"
+    orcid: "https://orcid.org/0009-0004-1698-5729"
 title: "The Holographic Computational Spin-Network (HCSN): Theory & Simulation"
 version: 1.0.0
 date-released: 2025-12-21
