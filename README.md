@@ -192,13 +192,13 @@ If you use HCSN-Theory in research, please cite the repo and include a reference
 
 Please cite it as follows:
 
-> **HCSN-Theory, @hcsn. (2025). The Holographic Computational Spin-Network (HCSN): Theory & Simulation (Version 1.0.0) [Computer software]. https://github.com/hcsn-theory/HCSN-Theory**
+> **The HCSN Research Group, @hcsn. (2025). The Holographic Computational Spin-Network (HCSN): Theory & Simulation (Version 1.0.0) [Computer software]. https://github.com/hcsn-theory/HCSN-Theory**
 
 ### BibTeX Entry
 For LaTeX/Overleaf users:
 ```bibtex
 @software{HCSN2025,
-  author = {HCSN-Theory, @hcsn.},
+  author = {The HCSN Research Group, @hcsn.},
   title = {The Holographic Computational Spin-Network (HCSN): Theory & Simulation},
   version = {1.0.0},
   year = {2025},
@@ -213,7 +213,7 @@ This project is active research and published under Apache 2.0 licence. For coll
 
 ---
 ## 🏛️ Governance
-HCSN Research Group is maintained by **@hcsn**.
+The HCSN Research Group is maintained by **@hcsn**.
 
 ---
 Philosophy
