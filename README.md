@@ -4,7 +4,7 @@ A computational approach to emergent spacetime, gravity, and quantum mechanics.
 
 ---
 
-> HCSN (Holographic Computational Spin-Network) explores the hypothesis that the universe is fundamentally computational — discrete events and causal relations give rise to spacetime, gravity, and q[...] 
+> HCSN (Holographic Computational Spin-Network) explores the hypothesis that the universe is fundamentally computational — discrete events and causal relations give rise to spacetime, gravity, and quantum features.
 
 ✨ Highlights
 - Minimal, local rewrite rules drive evolution.
