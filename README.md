@@ -198,7 +198,7 @@ Please cite it as follows:
 For LaTeX/Overleaf users:
 ```bibtex
 @software{HCSN2025,
-  author = {QWERT, Q.},
+  author = {HCSN-Theory, @hcsn.},
   title = {The Holographic Computational Spin-Network (HCSN): Theory & Simulation},
   version = {1.0.0},
   year = {2025},
