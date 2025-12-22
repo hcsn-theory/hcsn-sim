@@ -212,7 +212,10 @@ For LaTeX/Overleaf users:
 This project is active research and published under Apache 2.0 licence. For collaboration or questions, open an issue or contact the maintainers via GitHub: [hcsn-theory](https://github.com/hcsn-theory) 
 
 ---
+## 🏛️ Governance
+HCSN Research Group is maintained by **@hcsn**.
 
+---
 Philosophy
 > “The universe may not be described by computation — it may be computation.”
 ---
