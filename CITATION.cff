@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this theory or simulation code, please cite it as follows."
 authors:
-  - family-names: "HCSN-Theory"
+  - family-names: "The HCSN Research Group"
     given-names: "@hcsn"
     affiliation: "HCSN Research Group"
 title: "The Holographic Computational Spin-Network (HCSN): Theory & Simulation"
