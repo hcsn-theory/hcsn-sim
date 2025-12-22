@@ -2,6 +2,10 @@
 
 ## Theory: A Complete Framework for Quantum Gravity and Unification
 
+### HOME
+
+- [Back to Home](../README.md)
+
 ### Abstract
 This paper presents the Holographic Computational Spin-Network (HCSN) — a unified framework that derives quantum mechanics, general relativity, and the Standard Model from first principles. HCSN posits that spacetime and matter emerge from a discrete computational process operating on quantum hypergraphs. Key results include:
 
@@ -272,6 +276,9 @@ with sample representations into $\mathrm{SU}(3)$ provided by exponentials of Ge
 - $\tau_p = 10^{35\pm1}\,$yr
 
 ---
+
+### HOME
+- [Back to Home](../README.md)
 
 ## Acknowledgments
 
