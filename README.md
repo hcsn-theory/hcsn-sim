@@ -13,8 +13,10 @@ A computational approach to emergent spacetime, gravity, and quantum mechanics.
 
 ---
 
+
 Table of Contents
 - [Overview](#overview)
+- [Docs](#docs)
 - [Core Principles (Axioms)](#core-principles-axioms)
 - [Repository Structure](#repository-structure)
 - [Quick Start](#quick-start)
@@ -39,6 +41,13 @@ The long-term goal is to identify the minimal rule set that produces universes c
 - 4D spacetime structures
 - Holographic scaling of information
 - Quantum probabilistic behavior (Born rule)
+
+---
+
+## Docs
+
+This is full Documentation of this theory.
+[Click here to read the Documentation](docs/hcsn-theory.md)
 
 ---
 
