@@ -16,7 +16,7 @@ A computational approach to emergent spacetime, gravity, and quantum mechanics.
 Table of Contents
 - [Overview](#overview)
 - [Docs](#docs)
-- [Core Principles (Axioms)](#core-principles-axioms)
+- [Axioms](#axioms)
 - [Repository Structure](#repository-structure)
 - [Quick Start](#quick-start)
 - [How to Run a Toy Universe](#how-to-run-a-toy-universe)
@@ -24,7 +24,7 @@ Table of Contents
 - [Stable Spacetime-like Behavior](#stable-spacetime-like-behavior)
 - [Current Research Focus](#current-research-focus)
 - [Contributing](#contributing)
-- [Acknowledgements & License](#acknowledgements--license)
+- [Acknowledgements & License](#acknowledgements)
 
 ---
 
@@ -51,8 +51,7 @@ This is full Documentation of this theory.
 ---
 
 
-<a name="core-principles-axioms"></a>
-## Core Principles (Axioms) 🧭
+## Axioms
 
 | Axiom | Name | Summary |
 |---:|---|---|
@@ -65,7 +64,7 @@ This is full Documentation of this theory.
 
 ---
 
-## Repository Structure 📂
+## Repository Structure 
 
 ```text
 HCSN-Theory/
@@ -87,7 +86,7 @@ HCSN-Theory/
 
 ---
 
-## Quick Start 🚀
+## Quick Start 
 
 Requirements
 - Python 3.10 or later
@@ -104,7 +103,7 @@ This runs a toy universe and prints diagnostics every N steps (see config/flags 
 
 ---
 
-## How to Run a Toy Universe ▶️
+## How to Run a Toy Universe 
 
 1. Configure parameters (if available) in `engine` or via command-line flags.
 2. Start the simulation:
@@ -120,7 +119,7 @@ Tip: Increase logging or enable snapshotting in `rewrite_engine.py` for analysis
 
 ---
 
-## Diagnostics Explained 🧪
+## Diagnostics Explained 
 
 | Symbol | Name | Meaning |
 |:------:|------|--------|
@@ -137,7 +136,7 @@ Interpretation guide:
 
 ---
 
-## Stable Spacetime-Like Behavior ✅
+## Stable Spacetime-Like Behavior 
 
 Empirical indicators in simulations:
 - ⟨k⟩ stabilizes near 7.5–8.5
@@ -149,7 +148,7 @@ Negative results (failures) are equally valuable — they highlight missing axio
 
 ---
 
-## Current Research Focus 🔬
+## Current Research Focus 
 
 Active directions:
 - Prevent metric collapse under coarse-graining
@@ -160,7 +159,7 @@ Active directions:
 
 ---
 
-## Contributing — How to Help 🤝
+## Contributing
 
 We welcome contributions from:
 - physicists (GR, QFT, quantum gravity)
@@ -181,21 +180,21 @@ Guidelines:
 
 ---
 
-## Examples & Notebooks 📓
+## Examples & Notebooks 
 
 See `notebooks/` for visualization experiments and step-by-step explorations. If a plotting stack is available, export snapshots to `figures/` for inclusion in reports.
 
 ---
 
-## Acknowledgements & Citation ✍️
+## Acknowledgements
 
 If you use HCSN-Theory in research, please cite the repo and include a reference to the simulation version/commit used. Consider adding a DOI via Zenodo for formal citation.
 
 ---
 
-## License & Contact ⚖️
+## License & Contact 
 
-This project is active research and published under Apache 2.0 licence. For collaboration or questions, open an issue or contact the maintainers via GitHub: [hcsn-theory](https://github.com/hcsn-theor[...] 
+This project is active research and published under Apache 2.0 licence. For collaboration or questions, open an issue or contact the maintainers via GitHub: [hcsn-theory](https://github.com/hcsn-theory) 
 
 ---
 
