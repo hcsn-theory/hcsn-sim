@@ -268,9 +268,9 @@ with sample representations into $\mathrm{SU}(3)$ provided by exponentials of Ge
 
 - $\ell_P = 1.616\times10^{-35}\,$m
 - $E_P = 1.221\times10^{19}\,$GeV
-- $G = 6.674\times10^{-11}\,$m^3 kg^{-1} s^{-2}
+- $G = 6.674\times10^{-11}\,$m$^3$ kg$^{-1}$ s$^{-2}$
 - $\hbar = 1.055\times10^{-34}\,$J·s
-- $c = 2.998\times10^8\,$m s^{-1}
+- $c = 2.998\times10^8\,$m s$^{-1}$
 - $\xi(1\,\mathrm{GeV}) = 0.097\pm0.015$
 - $f_{\mathrm{NL}} = 5.2\pm1.3$
 - $\tau_p = 10^{35\pm1}\,$yr
@@ -285,9 +285,8 @@ with sample representations into $\mathrm{SU}(3)$ provided by exponentials of Ge
 This work synthesizes ideas from loop quantum gravity, causal-set theory, hypergraph rewriting, entropic-gravity arguments, and topological quantum field theory. The authors thank the quantum-gravity community for foundational contributions.
 
 <script type="text/javascript" async
-  src="[https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML](https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML)">
+  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
 </script>
-
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
   tex2jax: {
