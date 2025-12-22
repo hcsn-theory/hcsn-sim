@@ -1,16 +1,3 @@
-<script type="text/javascript" async
-  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
-</script>
-
-<script type="text/x-mathjax-config">
-MathJax.Hub.Config({
-  tex2jax: {
-    inlineMath: [['$','$'], ['\\(','\\)']],
-    processEscapes: true
-  }
-});
-</script>
-
 # The Holographic Computational Spin-Network (HCSN)
 
 ## Theory: A Complete Framework for Quantum Gravity and Unification
@@ -296,3 +283,16 @@ with sample representations into $\mathrm{SU}(3)$ provided by exponentials of Ge
 ## Acknowledgments
 
 This work synthesizes ideas from loop quantum gravity, causal-set theory, hypergraph rewriting, entropic-gravity arguments, and topological quantum field theory. The authors thank the quantum-gravity community for foundational contributions.
+
+<script type="text/javascript" async
+  src="[https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML](https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML)">
+</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    processEscapes: true
+  }
+});
+</script>
