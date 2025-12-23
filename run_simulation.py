@@ -18,7 +18,7 @@ from engine.observables import (
 
 CONFIG = {
     "seed": 1,
-    "max_steps": 5000,
+    "max_steps": 10000,
     "sample_interval": 100,
     "log_file": "simulation.log",
     "timeseries_file": "timeseries.json",
