@@ -25,6 +25,23 @@ jobs:
         run: |
           python3 run_simulation.py
 
+      - name: Commit simulation outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage ONLY these files
+          git add simulation.log timeseries.json
+
+          # Check if there is anything to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Add simulation outputs ($(date -u +"%Y-%m-%d %H:%M:%S UTC"))"
+          git push
+
       - name: Save artifacts
         uses: actions/upload-artifact@v4
         with:
