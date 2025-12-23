@@ -190,6 +190,10 @@ run_record = {
 try:
     with open(CONFIG["timeseries_file"], "r") as f:
         existing = json.load(f)
+
+    if isinstance(existing, dict):
+        existing = [existing]
+
 except (FileNotFoundError, json.JSONDecodeError):
     existing = []
 
