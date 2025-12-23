@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 with open("timeseries.json", "r") as f:
     data = json.load(f)
 
-latest_run = data["runs"][-1]
+latest_run = data[-1]
 
 t = latest_run["t"]
 k = latest_run["k"]
