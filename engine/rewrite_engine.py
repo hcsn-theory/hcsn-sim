@@ -27,7 +27,7 @@ class RewriteEngine:
         gamma_time=0.1,
         gamma_space=0.1,
         gamma_ext=0.05,
-        defect_log = [],
+        defect_log = None,
         gamma_closure=0.05,
         epsilon_label_violation = 0.05,
         gamma_hier=0.06
@@ -35,11 +35,13 @@ class RewriteEngine:
         self.H = hypergraph
         self.p_create = p_create
         self.gamma_time = gamma_time
+        self.rewrite_history = []
+        self.last_rewrite = None
         self.gamma_space = gamma_space
         self.gamma_ext = gamma_ext
         self.gamma_closure = gamma_closure
         self.gamma_hier = gamma_hier
-        self.defect_log = defect_log
+        self.defect_log = defect_log if defect_log is not None else []
         self.epsilon_label_violation = epsilon_label_violation
         self.time = 0
 
@@ -70,6 +72,16 @@ class RewriteEngine:
         if undo is None:
             self.time += 1
             return False
+        
+        # --- Dynamics --
+        self.last_rewrite = {
+            "added_vertices": undo.get("added_vertices", []),
+            "removed_vertices": (
+                [undo["removed_vertex"].id]
+                if "removed_vertex" in undo else []
+            ),
+            "added_edges": undo.get("added_edges", []),
+        }
 
         # --- 3. Measure AFTER ---
         L_after = self.H.max_chain_length()
@@ -110,6 +122,7 @@ class RewriteEngine:
         
         # --- 4. Acceptance probability ---
         accept_prob = 1.0
+        
 
         # Time inertia
         if delta_L < 0:
@@ -145,6 +158,12 @@ class RewriteEngine:
             self.undo_changes(undo)  # undo rewrite
             self.time += 1
             return False
+        
+        # --- momentum ---
+        self.rewrite_history.append({
+            "time": self.time,
+            "rewrite": self.last_rewrite
+        })
 
         self.time += 1
         return True
@@ -179,3 +198,10 @@ class RewriteEngine:
         for _ in range(steps):
             self.step()
             
+def defect_support_vertices(engine):
+    if not engine.defect_log:
+        return set()
+    return set(
+        engine.last_rewrite.get("added_vertices", [])
+        + engine.last_rewrite.get("removed_vertices", [])
+    )            
