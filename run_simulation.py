@@ -1,18 +1,6 @@
-#!/usr/bin/env python3
-"""
-run_simulation.py
-
-Emergent spacetime simulation driver.
-- Runs rewrite dynamics
-- Logs diagnostics to console + file
-- Detects and records topological defect events
-- Stores append-only time series for plotting
-"""
-
 import time
 import json
 import sys
-import os
 from datetime import datetime
 
 from engine.hypergraph import Hypergraph
@@ -21,11 +9,23 @@ from engine.observables import (
     worldline_interaction_graph,
     interaction_concentration,
     closure_density,
-    hierarchical_closure
+    hierarchical_closure,
 )
 
 # ============================================================
-# Dual output logger (console + file)
+# Configuration (EXPERIMENT-LEVEL ONLY)
+# ============================================================
+
+CONFIG = {
+    "seed": 1,
+    "max_steps": 1500,
+    "sample_interval": 100,
+    "log_file": "simulation.log",
+    "timeseries_file": "timeseries.json",
+}
+
+# ============================================================
+# Dual-output logger (terminal + file, append-only)
 # ============================================================
 
 class DualOutput:
@@ -36,37 +36,27 @@ class DualOutput:
     def write(self, message):
         self.terminal.write(message)
         self.log.write(message)
-        self.log.flush()
         self.terminal.flush()
+        self.log.flush()
 
     def flush(self):
         self.terminal.flush()
         self.log.flush()
 
-sys.stdout = DualOutput("simulation.log")
+
+sys.stdout = DualOutput(CONFIG["log_file"])
 
 # ============================================================
-# Initialize universe
+# Initialize universe (NO PHYSICS TUNING HERE)
 # ============================================================
 
 H = Hypergraph()
-
 v1 = H.add_vertex()
 v2 = H.add_vertex()
 H.add_causal_relation(v1, v2)
 H.add_hyperedge([v1, v2])
 
-engine = RewriteEngine(
-    H,
-    seed=1,
-    p_create=0.6,
-    gamma_time=0.1,
-    gamma_space=0.1,
-    gamma_ext=0.05,
-    gamma_closure=0.05,
-    gamma_hier=0.06,
-    epsilon_label_violation=1e-4
-)
+engine = RewriteEngine(H, seed=CONFIG["seed"])
 
 # ============================================================
 # Diagnostics state
@@ -87,136 +77,125 @@ timeseries_t = []
 timeseries_k = []
 timeseries_omega = []
 
+start_time = time.time()
+
 # ============================================================
 # Run header
 # ============================================================
 
-run_start_wall = time.time()
-run_id = datetime.now().isoformat(timespec="seconds")
+run_timestamp = datetime.now().isoformat()
 
-print("\n" + "=" * 92)
-print(f"RUN STARTED: {run_id}")
-print("=" * 92)
+print("\n" + "=" * 86)
+print(f"RUN STARTED: {run_timestamp}")
+print("=" * 86)
 
 print(
     " time |   V   |  <k>  | Δ<k> |  L  | ΔL |"
-    "    Φ    |    Ψ    |    Ω    | acc%   |  omega  |  Δomega"
+    "    Φ    |    Ψ    | acc%   |   omega   |   domega"
 )
 
 # ============================================================
 # Main evolution loop
 # ============================================================
 
-TOTAL_STEPS = 3000
-SAMPLE_INTERVAL = 100
-
-for _ in range(TOTAL_STEPS):
+for _ in range(1, CONFIG["max_steps"] + 1):
     success = engine.step()
-
     if success:
         accepted += 1
     else:
         rejected += 1
 
-    if engine.time % SAMPLE_INTERVAL == 0:
-        inter = worldline_interaction_graph(H)
+    if engine.time % CONFIG["sample_interval"] != 0:
+        continue
 
-        k = H.average_coordination()
-        L = H.max_chain_length()
-        omega = hierarchical_closure(H, inter)
+    inter = worldline_interaction_graph(H)
 
-        dk = k - last_k
-        dL = L - last_L
-        domega = omega - last_omega
+    k = H.average_coordination()
+    L = H.max_chain_length()
 
-        acc_ratio = accepted / max(accepted + rejected, 1)
+    dk = k - last_k
+    dL = L - last_L
 
-        # Store time series
-        timeseries_t.append(engine.time)
-        timeseries_k.append(k)
-        timeseries_omega.append(omega)
+    omega = hierarchical_closure(H, inter)
+    domega = omega - last_omega
 
-        print(
-            f"{engine.time:5d} | "
-            f"{len(H.vertices):5d} | "
-            f"{k:5.2f} | "
-            f"{dk:+5.2f} | "
-            f"{L:3d} | "
-            f"{dL:+3d} | "
-            f"{interaction_concentration(inter):7.4f} | "
-            f"{closure_density(inter):7.4f} | "
-            f"{omega:7.4f} | "
-            f"{acc_ratio:6.2%} | "
-            f"{omega:7.4f} | "
-            f"{domega:+7.4f}"
-        )
+    # --- store time series ---
+    timeseries_t.append(engine.time)
+    timeseries_k.append(k)
+    timeseries_omega.append(omega)
 
-        last_k = k
-        last_L = L
-        last_omega = omega
+    acc_ratio = accepted / max(accepted + rejected, 1)
+
+    print(
+        f"{engine.time:5d} | "
+        f"{len(H.vertices):5d} | "
+        f"{k:5.2f} | "
+        f"{dk:+5.2f} | "
+        f"{L:3d} | "
+        f"{dL:+3d} | "
+        f"{interaction_concentration(inter):7.4f} | "
+        f"{closure_density(inter):7.4f} | "
+        f"{acc_ratio:5.2%}   | "
+        f"{omega:7.4f} | "
+        f"{domega:+7.4f} |"
+    )
+
+    last_k = k
+    last_L = L
+    last_omega = omega
 
 # ============================================================
 # Run summary
 # ============================================================
 
-run_end_wall = time.time()
+end_time = time.time()
 
 print("\nRun complete.")
 print(f"Total steps: {engine.time}")
 print(f"Accepted: {accepted}, Rejected: {rejected}")
 print(f"Acceptance ratio: {accepted / max(accepted + rejected, 1):.3f}")
-print(f"Wall time: {run_end_wall - run_start_wall:.2f} s")
+print(f"Wall time: {end_time - start_time:.2f} s")
 
 # ============================================================
 # Defect statistics
 # ============================================================
 
-defects = engine.defect_log
-
 print("\n================ DEFECT STATISTICS ================\n")
+
+defects = engine.defect_log
 print(f"Total defects detected: {len(defects)}")
 
 if len(defects) > 1:
     times = [d["time"] for d in defects]
     spacings = [times[i + 1] - times[i] for i in range(len(times) - 1)]
 
-    print(f"Average defect spacing: {sum(spacings)/len(spacings):.2f}")
+    print(f"Average defect spacing: {sum(spacings) / len(spacings):.2f} steps")
     print(f"Min spacing: {min(spacings)}")
     print(f"Max spacing: {max(spacings)}")
+    print("First 10 spacings:", spacings[:10])
 
 # ============================================================
-# Append run to timeseries.json (append-only)
+# Append time series to JSON (RUN-PRESERVING)
 # ============================================================
 
 run_record = {
-    "run_id": run_id,
-    "meta": {
-        "steps": engine.time,
-        "sample_interval": SAMPLE_INTERVAL,
-        "seed": 1,
-        "accepted": accepted,
-        "rejected": rejected,
-        "acceptance_ratio": accepted / max(accepted + rejected, 1),
-        "wall_time_sec": round(run_end_wall - run_start_wall, 3),
-    },
-    "timeseries": {
-        "t": timeseries_t,
-        "k": timeseries_k,
-        "omega": timeseries_omega
-    },
-    "defects": defects
+    "run_started": run_timestamp,
+    "config": CONFIG,
+    "t": timeseries_t,
+    "k": timeseries_k,
+    "omega": timeseries_omega,
+    "defects": defects,
 }
 
-if os.path.exists("timeseries.json"):
-    with open("timeseries.json", "r") as f:
-        data = json.load(f)
-else:
-    data = {"runs": []}
+try:
+    with open(CONFIG["timeseries_file"], "r") as f:
+        existing = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    existing = []
 
-data["runs"].append(run_record)
+existing.append(run_record)
 
-with open("timeseries.json", "w") as f:
-    json.dump(data, f, indent=2)
+with open(CONFIG["timeseries_file"], "w") as f:
+    json.dump(existing, f, indent=2)
 
-print(f"\nSaved run {run_id} to timeseries.json")
-print("=" * 92)
+print("Appended run to timeseries.json")
