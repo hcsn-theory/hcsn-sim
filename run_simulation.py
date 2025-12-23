@@ -190,16 +190,17 @@ run_record = {
 try:
     with open(CONFIG["timeseries_file"], "r") as f:
         existing = json.load(f)
-
-    if isinstance(existing, dict):
-        existing = [existing]
-
 except (FileNotFoundError, json.JSONDecodeError):
-    existing = []
+    existing = {}
 
-existing.append(run_record)
+# ---- normalize structure ----
+if not isinstance(existing, dict):
+    existing = {}
+
+if "runs" not in existing or not isinstance(existing["runs"], list):
+    existing["runs"] = []
+
+existing["runs"].append(run_record)
 
 with open(CONFIG["timeseries_file"], "w") as f:
     json.dump(existing, f, indent=2)
-
-print("Appended run to timeseries.json")
