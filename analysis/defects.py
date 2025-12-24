@@ -1,49 +1,72 @@
 # analysis/defects.py
 
-def defect_support_vertices(engine):
-    """
-    Vertices touched by the rewrite that triggered the defect.
-    """
-    if engine.last_rewrite is None:
-        return set()
+import numpy as np
 
-    return set(
-        engine.last_rewrite.get("added_vertices", [])
-        + engine.last_rewrite.get("removed_vertices", [])
-    )
-
-
-def defect_momentum(engine, defect_event, window=20):
+def defect_momentum(defects, defect, window=20):
     """
-    Observational momentum: rewrite-flow asymmetry
-    around a defect event.
+    Purely observational momentum:
+    imbalance of defect events around this defect.
     """
-    t0 = defect_event["time"]
-    support = defect_support_vertices(engine)
+    t0 = defect["time"]
 
     before = 0
     after = 0
 
-    for r in engine.rewrite_history:
-        if abs(r["time"] - t0) > window:
+    for d in defects:
+        dt = d["time"] - t0
+        if abs(dt) > window or dt == 0:
             continue
-
-        touched = set(r["rewrite"]["added_vertices"]) & support
-        if not touched:
-            continue
-
-        if r["time"] < t0:
+        if dt < 0:
             before += 1
         else:
             after += 1
 
     return after - before
 
-def defect_acceleration(momentum_series):
+
+def defect_acceleration(momentum):
     """
-    Discrete acceleration from momentum history.
+    Discrete acceleration from momentum series.
     """
-    return [
-        momentum_series[i+1] - momentum_series[i]
-        for i in range(len(momentum_series) - 1)
-    ]
+    return np.diff(momentum)
+
+def defect_momentum_at_time(defects, center_time, window=20):
+    """
+    Momentum measured at an arbitrary observation time.
+    """
+    before = 0
+    after = 0
+
+    for d in defects:
+        dt = d["time"] - center_time
+        if abs(dt) > window or dt == 0:
+            continue
+        if dt < 0:
+            before += 1
+        else:
+            after += 1
+
+    return after - before
+
+def momentum_timeseries(defects, defect, window=20, step=5):
+    """
+    Returns (times, momenta) for one defect.
+    """
+    t0 = defect["time"]
+
+    # estimate lifetime from neighboring defects
+    times = [d["time"] for d in defects]
+    idx = times.index(t0)
+
+    t_start = times[idx - 1] if idx > 0 else t0
+    t_end   = times[idx + 1] if idx < len(times) - 1 else t0
+
+    ts = []
+    ps = []
+
+    for t in range(t_start, t_end + 1, step):
+        p = defect_momentum_at_time(defects, t, window)
+        ts.append(t)
+        ps.append(p)
+
+    return ts, ps

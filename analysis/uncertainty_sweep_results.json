@@ -1,0 +1,170 @@
+[
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.02,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.05,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.1,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.06,
+    "gamma_ext": 0.02,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.06,
+    "gamma_ext": 0.05,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.06,
+    "gamma_ext": 0.1,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.12,
+    "gamma_ext": 0.02,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.12,
+    "gamma_ext": 0.05,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.05,
+    "gamma_hier": 0.12,
+    "gamma_ext": 0.1,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.02,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.05,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.1,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.06,
+    "gamma_ext": 0.02,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.06,
+    "gamma_ext": 0.05,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.06,
+    "gamma_ext": 0.1,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.12,
+    "gamma_ext": 0.02,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.12,
+    "gamma_ext": 0.05,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.1,
+    "gamma_hier": 0.12,
+    "gamma_ext": 0.1,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.2,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.02,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.2,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.05,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  },
+  {
+    "gamma_time": 0.2,
+    "gamma_hier": 0.03,
+    "gamma_ext": 0.1,
+    "alpha": 0.609,
+    "scatter": 0.652,
+    "num_defects": 12
+  }
+]

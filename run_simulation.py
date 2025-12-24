@@ -3,6 +3,7 @@ import json
 import sys
 from datetime import datetime
 
+from analysis.update_particle_activity import update_particle_activity  
 from engine.hypergraph import Hypergraph
 from engine.rewrite_engine import RewriteEngine
 from engine.observables import (
@@ -11,14 +12,15 @@ from engine.observables import (
     closure_density,
     hierarchical_closure,
 )
-
+with open("analysis/particles.json", "r") as f:
+    particles = json.load(f)
 # ============================================================
 # Configuration (EXPERIMENT-LEVEL ONLY)
 # ============================================================
 
 CONFIG = {
     "seed": 1,
-    "max_steps": 10000,
+    "max_steps": 3000,
     "sample_interval": 100,
     "log_file": "simulation.log",
     "timeseries_file": "timeseries.json",
@@ -97,11 +99,12 @@ print(
 # ============================================================
 # Main evolution loop
 # ============================================================
-
 for _ in range(1, CONFIG["max_steps"] + 1):
     success = engine.step()
     if success:
         accepted += 1
+        
+        update_particle_activity(engine, particles)
     else:
         rejected += 1
 
@@ -185,6 +188,8 @@ run_record = {
     "k": timeseries_k,
     "omega": timeseries_omega,
     "defects": defects,
+    "rewrite_history": engine.rewrite_history,
+    "particle_activity": engine.particle_activity
 }
 
 try:

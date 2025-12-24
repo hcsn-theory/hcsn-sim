@@ -38,6 +38,7 @@ class RewriteEngine:
         self.rewrite_history = []
         self.last_rewrite = None
         self.gamma_space = gamma_space
+        self.particle_activity = {}
         self.gamma_ext = gamma_ext
         self.gamma_closure = gamma_closure
         self.gamma_hier = gamma_hier
@@ -143,7 +144,7 @@ class RewriteEngine:
         # --- 5. Geometricity constraint (THIS is what you add) ---
         V = len(self.H.vertices)
         k_target = 8.0
-        lambda_k = 0.25 * (1 - math.exp(-V / 200))
+        lambda_k = 0.6 * (1 - math.exp(-V / 300))
         accept_prob *= math.exp(-lambda_k * (k_after - k_target)**2)
         
         # --- 5b. Topological defect suppression (soft conservation) ---
@@ -154,20 +155,17 @@ class RewriteEngine:
             accept_prob *= math.exp(-gamma_defect * abs(delta_Q))
 
         # --- 6. Accept or reject ---
-        if random.random() > accept_prob:
-            self.undo_changes(undo)  # undo rewrite
-            self.time += 1
-            return False
-        
-        # --- momentum ---
-        self.rewrite_history.append({
-            "time": self.time,
-            "rewrite": self.last_rewrite
-        })
+        accepted = random.random() <= accept_prob
+
+        if not accepted:
+            self.undo_changes(undo)
+        else:
+            self.record_rewrite(undo)
 
         self.time += 1
-        return True
-            
+        return accepted
+    
+    
     def undo_changes(self, undo):
         
         # restore removed vertex
@@ -194,6 +192,29 @@ class RewriteEngine:
         for u, past in undo.get("old_causal", {}).items():
             self.H.causal_order[u] = past
             
+    def record_rewrite(self, undo):
+        if not hasattr(self, "rewrite_history"):
+            self.rewrite_history = []
+
+        self.rewrite_history.append({
+            "time": self.time,
+            "rewrite": {
+                "added_vertices": undo.get("added_vertices", []),
+                "removed_vertices": list(undo.get("removed_vertex", {}).keys())
+                    if "removed_vertex" in undo else [],
+                "added_edges": undo.get("added_edges", []),
+                "removed_edges": list(undo.get("removed_edges", {}).keys())
+            }
+    })
+        
+    def touched_vertices(self):
+        if self.last_rewrite is None:
+            return set()
+        return set(
+            self.last_rewrite.get("added_vertices", [])
+            + self.last_rewrite.get("removed_vertices", [])
+        )
+            
     def run(self, steps):
         for _ in range(steps):
             self.step()
@@ -205,3 +226,4 @@ def defect_support_vertices(engine):
         engine.last_rewrite.get("added_vertices", [])
         + engine.last_rewrite.get("removed_vertices", [])
     )            
+    
