@@ -20,7 +20,7 @@ with open("analysis/particles.json", "r") as f:
 
 CONFIG = {
     "seed": 1,
-    "max_steps": 3000,
+    "max_steps": 10000,
     "sample_interval": 100,
     "log_file": "simulation.log",
     "timeseries_file": "timeseries.json",

@@ -1,5 +1,6 @@
 # engine/rewrite_engine.py
 
+from itertools import count
 import random
 import math
 import copy
@@ -29,7 +30,7 @@ class RewriteEngine:
         gamma_ext=0.05,
         defect_log = None,
         gamma_closure=0.05,
-        epsilon_label_violation = 0.05,
+        epsilon_label_violation = 0.08,
         gamma_hier=0.06
     ):
         self.H = hypergraph
@@ -106,6 +107,7 @@ class RewriteEngine:
         if abs(delta_Q) > self.epsilon_label_violation:
             event = {
                 "time": self.time,
+                "birth_time": self.time,
                 "delta_Q": delta_Q,
                 "V": len(self.H.vertices),
                 "k": k_after,
@@ -118,11 +120,19 @@ class RewriteEngine:
                 f"*** DEFECT EVENT at t={self.time} | "
                 f"ΔQ={delta_Q:+.4e} | "
                 f"V={event['V']} | "
+                f"birth_time={event['birth_time']} | "
                 f"k={event['k']:.2f} ***"
             )
+            
         
         # --- 4. Acceptance probability ---
         accept_prob = 1.0
+        k_target = 8.0
+        
+        if k_after > k_target + 0.8:
+            accept_prob *= math.exp(-0.5 * (k_after - k_target)**2)  # discourage high connectivity
+            
+
         
 
         # Time inertia
@@ -143,17 +153,72 @@ class RewriteEngine:
 
         # --- 5. Geometricity constraint (THIS is what you add) ---
         V = len(self.H.vertices)
-        k_target = 8.0
-        lambda_k = 0.6 * (1 - math.exp(-V / 300))
+        if V < 300:
+            lambda_k = 0.2 * (1 - math.exp(-V / 200))
+        else:
+            lambda_k = 0.6
+            
         accept_prob *= math.exp(-lambda_k * (k_after - k_target)**2)
         
         # --- 5b. Topological defect suppression (soft conservation) ---
-        gamma_defect = 0.15  # start small
+        gamma_defect = 0.15 * math.exp(-V / 800)  # start small
         
         if abs(delta_Q) > self.epsilon_label_violation:
             
             accept_prob *= math.exp(-gamma_defect * abs(delta_Q))
+            
+        # --- B1. Defect inertia (age-based stability) ---
+        if abs(delta_Q) > self.epsilon_label_violation and self.defect_log:
+            last_defect = self.defect_log[-1]
+            age = self.time - last_defect.get("birth_time", self.time)
+            inertia = math.exp(-1.0 / (age + 1.0))
+            accept_prob *= inertia
+            
+        # --- Step B2: particle interaction bias ---
+        interaction_boost = 1.0
 
+        touched = self.touched_vertices()
+
+        for pid, count in self.particle_activity.items():
+        # recent activity → likely nearby particle
+            if count > 0 and pid in touched:
+                interaction_boost *= 1.02  # very weak
+
+        accept_prob *= interaction_boost
+        
+        # --- Step C: particle survival bias ---
+        if V < 300:
+            survival_boost = 1.0
+            touched = self.touched_vertices()
+
+            for pid, count in self.particle_activity.items():
+                if pid in touched and count > 3:
+                    # protect against large topolog changes
+                    if abs(delta_Q) > 0.15:
+                        survival_boost *= 1.05  # mild penalty
+
+            accept_prob *= survival_boost
+            
+        # --- Step 16: phase-locking (temporal coherence) ---
+        if self.defect_log:
+            last = self.defect_log[-1]
+            dt = self.time - last["time"]
+
+            # only reward near-aligned defects
+            if 1 <= dt <= 8 and abs(delta_Q) < 0.25:
+                phase_lock = math.exp(-(dt - 1) / 4.0)
+                accept_prob *= (1.0 + 0.15 * phase_lock)
+    
+        # --- Step B3: mass consistency bias ---
+        mass_penalty = 1.0
+
+        for pid, activity in self.particle_activity.items():
+            # activity ~ proxy for inverse mass
+            mass_penalty *= math.exp(-0.01 * activity)
+
+        accept_prob *= mass_penalty
+        
+        
         # --- 6. Accept or reject ---
         accepted = random.random() <= accept_prob
 
@@ -165,7 +230,7 @@ class RewriteEngine:
         self.time += 1
         return accepted
     
-    
+        
     def undo_changes(self, undo):
         
         # restore removed vertex
@@ -226,4 +291,4 @@ def defect_support_vertices(engine):
         engine.last_rewrite.get("added_vertices", [])
         + engine.last_rewrite.get("removed_vertices", [])
     )            
-    
+

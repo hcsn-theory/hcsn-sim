@@ -1,0 +1,926 @@
+[
+  {
+    "dt": 127,
+    "influence": 0
+  },
+  {
+    "dt": 130,
+    "influence": 0
+  },
+  {
+    "dt": 136,
+    "influence": 0
+  },
+  {
+    "dt": 138,
+    "influence": 0
+  },
+  {
+    "dt": 296,
+    "influence": 0
+  },
+  {
+    "dt": 297,
+    "influence": 0
+  },
+  {
+    "dt": 312,
+    "influence": 0
+  },
+  {
+    "dt": 316,
+    "influence": 0
+  },
+  {
+    "dt": 321,
+    "influence": 0
+  },
+  {
+    "dt": 333,
+    "influence": 0
+  },
+  {
+    "dt": 340,
+    "influence": 0
+  },
+  {
+    "dt": 434,
+    "influence": 0
+  },
+  {
+    "dt": 435,
+    "influence": 0
+  },
+  {
+    "dt": 447,
+    "influence": 0
+  },
+  {
+    "dt": 449,
+    "influence": 0
+  },
+  {
+    "dt": 453,
+    "influence": 0
+  },
+  {
+    "dt": 455,
+    "influence": 0
+  },
+  {
+    "dt": 458,
+    "influence": 0
+  },
+  {
+    "dt": 481,
+    "influence": 0
+  },
+  {
+    "dt": 880,
+    "influence": 0
+  },
+  {
+    "dt": 967,
+    "influence": 0
+  },
+  {
+    "dt": 3,
+    "influence": 1
+  },
+  {
+    "dt": 9,
+    "influence": 1
+  },
+  {
+    "dt": 11,
+    "influence": 1
+  },
+  {
+    "dt": 169,
+    "influence": 0
+  },
+  {
+    "dt": 170,
+    "influence": 0
+  },
+  {
+    "dt": 185,
+    "influence": 0
+  },
+  {
+    "dt": 189,
+    "influence": 0
+  },
+  {
+    "dt": 194,
+    "influence": 0
+  },
+  {
+    "dt": 206,
+    "influence": 0
+  },
+  {
+    "dt": 213,
+    "influence": 0
+  },
+  {
+    "dt": 307,
+    "influence": 0
+  },
+  {
+    "dt": 308,
+    "influence": 0
+  },
+  {
+    "dt": 320,
+    "influence": 0
+  },
+  {
+    "dt": 322,
+    "influence": 0
+  },
+  {
+    "dt": 326,
+    "influence": 0
+  },
+  {
+    "dt": 328,
+    "influence": 0
+  },
+  {
+    "dt": 331,
+    "influence": 0
+  },
+  {
+    "dt": 354,
+    "influence": 0
+  },
+  {
+    "dt": 753,
+    "influence": 0
+  },
+  {
+    "dt": 840,
+    "influence": 0
+  },
+  {
+    "dt": 6,
+    "influence": 1
+  },
+  {
+    "dt": 8,
+    "influence": 1
+  },
+  {
+    "dt": 166,
+    "influence": 0
+  },
+  {
+    "dt": 167,
+    "influence": 0
+  },
+  {
+    "dt": 182,
+    "influence": 0
+  },
+  {
+    "dt": 186,
+    "influence": 0
+  },
+  {
+    "dt": 191,
+    "influence": 0
+  },
+  {
+    "dt": 203,
+    "influence": 0
+  },
+  {
+    "dt": 210,
+    "influence": 0
+  },
+  {
+    "dt": 304,
+    "influence": 0
+  },
+  {
+    "dt": 305,
+    "influence": 0
+  },
+  {
+    "dt": 317,
+    "influence": 0
+  },
+  {
+    "dt": 319,
+    "influence": 0
+  },
+  {
+    "dt": 323,
+    "influence": 0
+  },
+  {
+    "dt": 325,
+    "influence": 0
+  },
+  {
+    "dt": 328,
+    "influence": 0
+  },
+  {
+    "dt": 351,
+    "influence": 0
+  },
+  {
+    "dt": 750,
+    "influence": 0
+  },
+  {
+    "dt": 837,
+    "influence": 0
+  },
+  {
+    "dt": 2,
+    "influence": 1
+  },
+  {
+    "dt": 160,
+    "influence": 0
+  },
+  {
+    "dt": 161,
+    "influence": 0
+  },
+  {
+    "dt": 176,
+    "influence": 0
+  },
+  {
+    "dt": 180,
+    "influence": 0
+  },
+  {
+    "dt": 185,
+    "influence": 0
+  },
+  {
+    "dt": 197,
+    "influence": 0
+  },
+  {
+    "dt": 204,
+    "influence": 0
+  },
+  {
+    "dt": 298,
+    "influence": 0
+  },
+  {
+    "dt": 299,
+    "influence": 0
+  },
+  {
+    "dt": 311,
+    "influence": 0
+  },
+  {
+    "dt": 313,
+    "influence": 0
+  },
+  {
+    "dt": 317,
+    "influence": 0
+  },
+  {
+    "dt": 319,
+    "influence": 0
+  },
+  {
+    "dt": 322,
+    "influence": 0
+  },
+  {
+    "dt": 345,
+    "influence": 0
+  },
+  {
+    "dt": 744,
+    "influence": 0
+  },
+  {
+    "dt": 831,
+    "influence": 0
+  },
+  {
+    "dt": 158,
+    "influence": 0
+  },
+  {
+    "dt": 159,
+    "influence": 0
+  },
+  {
+    "dt": 174,
+    "influence": 0
+  },
+  {
+    "dt": 178,
+    "influence": 0
+  },
+  {
+    "dt": 183,
+    "influence": 0
+  },
+  {
+    "dt": 195,
+    "influence": 0
+  },
+  {
+    "dt": 202,
+    "influence": 0
+  },
+  {
+    "dt": 296,
+    "influence": 0
+  },
+  {
+    "dt": 297,
+    "influence": 0
+  },
+  {
+    "dt": 309,
+    "influence": 0
+  },
+  {
+    "dt": 311,
+    "influence": 0
+  },
+  {
+    "dt": 315,
+    "influence": 0
+  },
+  {
+    "dt": 317,
+    "influence": 0
+  },
+  {
+    "dt": 320,
+    "influence": 0
+  },
+  {
+    "dt": 343,
+    "influence": 0
+  },
+  {
+    "dt": 742,
+    "influence": 0
+  },
+  {
+    "dt": 829,
+    "influence": 0
+  },
+  {
+    "dt": 1,
+    "influence": 1
+  },
+  {
+    "dt": 16,
+    "influence": 1
+  },
+  {
+    "dt": 20,
+    "influence": 1
+  },
+  {
+    "dt": 25,
+    "influence": 1
+  },
+  {
+    "dt": 37,
+    "influence": 1
+  },
+  {
+    "dt": 44,
+    "influence": 1
+  },
+  {
+    "dt": 138,
+    "influence": 0
+  },
+  {
+    "dt": 139,
+    "influence": 0
+  },
+  {
+    "dt": 151,
+    "influence": 0
+  },
+  {
+    "dt": 153,
+    "influence": 0
+  },
+  {
+    "dt": 157,
+    "influence": 0
+  },
+  {
+    "dt": 159,
+    "influence": 0
+  },
+  {
+    "dt": 162,
+    "influence": 0
+  },
+  {
+    "dt": 185,
+    "influence": 0
+  },
+  {
+    "dt": 584,
+    "influence": 0
+  },
+  {
+    "dt": 671,
+    "influence": 0
+  },
+  {
+    "dt": 15,
+    "influence": 1
+  },
+  {
+    "dt": 19,
+    "influence": 1
+  },
+  {
+    "dt": 24,
+    "influence": 1
+  },
+  {
+    "dt": 36,
+    "influence": 1
+  },
+  {
+    "dt": 43,
+    "influence": 1
+  },
+  {
+    "dt": 137,
+    "influence": 0
+  },
+  {
+    "dt": 138,
+    "influence": 0
+  },
+  {
+    "dt": 150,
+    "influence": 0
+  },
+  {
+    "dt": 152,
+    "influence": 0
+  },
+  {
+    "dt": 156,
+    "influence": 0
+  },
+  {
+    "dt": 158,
+    "influence": 0
+  },
+  {
+    "dt": 161,
+    "influence": 0
+  },
+  {
+    "dt": 184,
+    "influence": 0
+  },
+  {
+    "dt": 583,
+    "influence": 0
+  },
+  {
+    "dt": 670,
+    "influence": 0
+  },
+  {
+    "dt": 4,
+    "influence": 1
+  },
+  {
+    "dt": 9,
+    "influence": 1
+  },
+  {
+    "dt": 21,
+    "influence": 1
+  },
+  {
+    "dt": 28,
+    "influence": 1
+  },
+  {
+    "dt": 122,
+    "influence": 0
+  },
+  {
+    "dt": 123,
+    "influence": 0
+  },
+  {
+    "dt": 135,
+    "influence": 0
+  },
+  {
+    "dt": 137,
+    "influence": 0
+  },
+  {
+    "dt": 141,
+    "influence": 0
+  },
+  {
+    "dt": 143,
+    "influence": 0
+  },
+  {
+    "dt": 146,
+    "influence": 0
+  },
+  {
+    "dt": 169,
+    "influence": 0
+  },
+  {
+    "dt": 568,
+    "influence": 0
+  },
+  {
+    "dt": 655,
+    "influence": 0
+  },
+  {
+    "dt": 5,
+    "influence": 1
+  },
+  {
+    "dt": 17,
+    "influence": 1
+  },
+  {
+    "dt": 24,
+    "influence": 1
+  },
+  {
+    "dt": 118,
+    "influence": 0
+  },
+  {
+    "dt": 119,
+    "influence": 0
+  },
+  {
+    "dt": 131,
+    "influence": 0
+  },
+  {
+    "dt": 133,
+    "influence": 0
+  },
+  {
+    "dt": 137,
+    "influence": 0
+  },
+  {
+    "dt": 139,
+    "influence": 0
+  },
+  {
+    "dt": 142,
+    "influence": 0
+  },
+  {
+    "dt": 165,
+    "influence": 0
+  },
+  {
+    "dt": 564,
+    "influence": 0
+  },
+  {
+    "dt": 651,
+    "influence": 0
+  },
+  {
+    "dt": 12,
+    "influence": 1
+  },
+  {
+    "dt": 19,
+    "influence": 1
+  },
+  {
+    "dt": 113,
+    "influence": 0
+  },
+  {
+    "dt": 114,
+    "influence": 0
+  },
+  {
+    "dt": 126,
+    "influence": 0
+  },
+  {
+    "dt": 128,
+    "influence": 0
+  },
+  {
+    "dt": 132,
+    "influence": 0
+  },
+  {
+    "dt": 134,
+    "influence": 0
+  },
+  {
+    "dt": 137,
+    "influence": 0
+  },
+  {
+    "dt": 160,
+    "influence": 0
+  },
+  {
+    "dt": 559,
+    "influence": 0
+  },
+  {
+    "dt": 646,
+    "influence": 0
+  },
+  {
+    "dt": 7,
+    "influence": 1
+  },
+  {
+    "dt": 101,
+    "influence": 0
+  },
+  {
+    "dt": 102,
+    "influence": 0
+  },
+  {
+    "dt": 114,
+    "influence": 0
+  },
+  {
+    "dt": 116,
+    "influence": 0
+  },
+  {
+    "dt": 120,
+    "influence": 0
+  },
+  {
+    "dt": 122,
+    "influence": 0
+  },
+  {
+    "dt": 125,
+    "influence": 0
+  },
+  {
+    "dt": 148,
+    "influence": 0
+  },
+  {
+    "dt": 547,
+    "influence": 0
+  },
+  {
+    "dt": 634,
+    "influence": 0
+  },
+  {
+    "dt": 94,
+    "influence": 1
+  },
+  {
+    "dt": 95,
+    "influence": 1
+  },
+  {
+    "dt": 107,
+    "influence": 0
+  },
+  {
+    "dt": 109,
+    "influence": 0
+  },
+  {
+    "dt": 113,
+    "influence": 0
+  },
+  {
+    "dt": 115,
+    "influence": 0
+  },
+  {
+    "dt": 118,
+    "influence": 0
+  },
+  {
+    "dt": 141,
+    "influence": 0
+  },
+  {
+    "dt": 540,
+    "influence": 0
+  },
+  {
+    "dt": 627,
+    "influence": 0
+  },
+  {
+    "dt": 1,
+    "influence": 1
+  },
+  {
+    "dt": 13,
+    "influence": 1
+  },
+  {
+    "dt": 15,
+    "influence": 1
+  },
+  {
+    "dt": 19,
+    "influence": 1
+  },
+  {
+    "dt": 21,
+    "influence": 1
+  },
+  {
+    "dt": 24,
+    "influence": 1
+  },
+  {
+    "dt": 47,
+    "influence": 1
+  },
+  {
+    "dt": 446,
+    "influence": 0
+  },
+  {
+    "dt": 533,
+    "influence": 0
+  },
+  {
+    "dt": 12,
+    "influence": 1
+  },
+  {
+    "dt": 14,
+    "influence": 1
+  },
+  {
+    "dt": 18,
+    "influence": 1
+  },
+  {
+    "dt": 20,
+    "influence": 1
+  },
+  {
+    "dt": 23,
+    "influence": 1
+  },
+  {
+    "dt": 46,
+    "influence": 1
+  },
+  {
+    "dt": 445,
+    "influence": 0
+  },
+  {
+    "dt": 532,
+    "influence": 0
+  },
+  {
+    "dt": 2,
+    "influence": 1
+  },
+  {
+    "dt": 6,
+    "influence": 1
+  },
+  {
+    "dt": 8,
+    "influence": 1
+  },
+  {
+    "dt": 11,
+    "influence": 1
+  },
+  {
+    "dt": 34,
+    "influence": 1
+  },
+  {
+    "dt": 433,
+    "influence": 0
+  },
+  {
+    "dt": 520,
+    "influence": 0
+  },
+  {
+    "dt": 4,
+    "influence": 1
+  },
+  {
+    "dt": 6,
+    "influence": 1
+  },
+  {
+    "dt": 9,
+    "influence": 1
+  },
+  {
+    "dt": 32,
+    "influence": 1
+  },
+  {
+    "dt": 431,
+    "influence": 0
+  },
+  {
+    "dt": 518,
+    "influence": 0
+  },
+  {
+    "dt": 2,
+    "influence": 1
+  },
+  {
+    "dt": 5,
+    "influence": 1
+  },
+  {
+    "dt": 28,
+    "influence": 1
+  },
+  {
+    "dt": 427,
+    "influence": 0
+  },
+  {
+    "dt": 514,
+    "influence": 0
+  },
+  {
+    "dt": 3,
+    "influence": 1
+  },
+  {
+    "dt": 26,
+    "influence": 1
+  },
+  {
+    "dt": 425,
+    "influence": 0
+  },
+  {
+    "dt": 512,
+    "influence": 0
+  },
+  {
+    "dt": 23,
+    "influence": 1
+  },
+  {
+    "dt": 422,
+    "influence": 0
+  },
+  {
+    "dt": 509,
+    "influence": 0
+  },
+  {
+    "dt": 399,
+    "influence": 0
+  },
+  {
+    "dt": 486,
+    "influence": 0
+  },
+  {
+    "dt": 87,
+    "influence": 1
+  }
+]
