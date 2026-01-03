@@ -1,3 +1,4 @@
+import os
 import time
 import json
 import sys
@@ -12,8 +13,7 @@ from engine.observables import (
     closure_density,
     hierarchical_closure,
 )
-with open("analysis/particles.json", "r") as f:
-    particles = json.load(f)
+
 # ============================================================
 # Configuration (EXPERIMENT-LEVEL ONLY)
 # ============================================================
@@ -25,6 +25,7 @@ CONFIG = {
     "log_file": "simulation.log",
     "timeseries_file": "timeseries.json",
 }
+
 
 # ============================================================
 # Dual-output logger (terminal + file, append-only)
@@ -59,6 +60,12 @@ H.add_causal_relation(v1, v2)
 H.add_hyperedge([v1, v2])
 
 engine = RewriteEngine(H, seed=CONFIG["seed"])
+# Load particle tracks from previous run (if any)
+try:
+    with open("analysis/particles.json", "r") as f:
+        particles = json.load(f)
+except FileNotFoundError:
+    particles = []
 
 # ============================================================
 # Diagnostics state

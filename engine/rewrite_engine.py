@@ -13,7 +13,11 @@ from engine.observables import (
     interaction_concentration,
     closure_density
 )
-
+from engine.physics_params import (
+    GAMMA_DEFECT,
+    INERTIA_SCALE,
+    INTERACTION_BOOST
+)
 
 class RewriteEngine:
     """
@@ -161,7 +165,7 @@ class RewriteEngine:
         accept_prob *= math.exp(-lambda_k * (k_after - k_target)**2)
         
         # --- 5b. Topological defect suppression (soft conservation) ---
-        gamma_defect = 0.15 * math.exp(-V / 800)  # start small
+        gamma_defect = GAMMA_DEFECT * math.exp(-V / 800)  # start small
         
         if abs(delta_Q) > self.epsilon_label_violation:
             
@@ -171,7 +175,7 @@ class RewriteEngine:
         if abs(delta_Q) > self.epsilon_label_violation and self.defect_log:
             last_defect = self.defect_log[-1]
             age = self.time - last_defect.get("birth_time", self.time)
-            inertia = math.exp(-1.0 / (age + 1.0))
+            inertia = math.exp(-INERTIA_SCALE / (age + 1.0))
             accept_prob *= inertia
             
         # --- Step B2: particle interaction bias ---
@@ -182,7 +186,7 @@ class RewriteEngine:
         for pid, count in self.particle_activity.items():
         # recent activity → likely nearby particle
             if count > 0 and pid in touched:
-                interaction_boost *= 1.02  # very weak
+                interaction_boost *= INTERACTION_BOOST # very weak
 
         accept_prob *= interaction_boost
         
