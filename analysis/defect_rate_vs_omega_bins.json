@@ -1,0 +1,32 @@
+[
+  {
+    "omega": 0.12,
+    "time": 0.0,
+    "defects": 0,
+    "rate": null
+  },
+  {
+    "omega": 0.36,
+    "time": 100.0,
+    "defects": 4,
+    "rate": 0.04
+  },
+  {
+    "omega": 0.6,
+    "time": 200.0,
+    "defects": 5,
+    "rate": 0.025
+  },
+  {
+    "omega": 0.84,
+    "time": 2300.0,
+    "defects": 5,
+    "rate": 0.002173913043478261
+  },
+  {
+    "omega": 1.08,
+    "time": 7000.0,
+    "defects": 17,
+    "rate": 0.0024285714285714284
+  }
+]
