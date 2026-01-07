@@ -3,8 +3,8 @@
 import random
 
 
-def edge_creation_rule(H):
-    
+def edge_creation_rule(H, anchor_vertex=None):
+
     if not H.hyperedges:
         return None
 
@@ -14,7 +14,17 @@ def edge_creation_rule(H):
         "added_causal": []
     }
 
-    edge = random.choice(list(H.hyperedges.values()))
+    if anchor_vertex is None:
+        edge = random.choice(list(H.hyperedges.values()))
+    else:
+        candidates = [
+            e for e in H.hyperedges.values()
+            if anchor_vertex in [v.id for v in e.vertices]
+        ]
+        if not candidates:
+            return None
+        edge = random.choice(candidates)
+
     new_vertex = H.add_vertex()
     undo["added_vertices"].append(new_vertex.id)
 
@@ -35,7 +45,6 @@ def edge_creation_rule(H):
     undo["added_edges"].append(e.id)
 
     return undo
-
 
 def vertex_fusion_rule(H):
     

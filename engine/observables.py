@@ -334,3 +334,18 @@ def local_hierarchical_closure(H, inter, v_id, radius=2):
         sub_inter
     )
      
+def local_omega(H, inter, v):
+    """
+    Local contribution to hierarchical closure.
+    Proxy: fraction of interactions involving v that participate in closure.
+    """
+    neighbors = inter.get(v, [])
+    if not neighbors:
+        return 0.0
+
+    closed = 0
+    for u in neighbors:
+        if u in inter and v in inter[u]:
+            closed += 1
+
+    return closed / max(len(neighbors), 1)
