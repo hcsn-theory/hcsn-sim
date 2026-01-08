@@ -61,6 +61,11 @@ class RewriteEngine:
         self.gamma_ext = gamma_ext
         self.gamma_closure = gamma_closure
         self.gamma_hier = gamma_hier
+        self.cluster_omega_memory = {}
+        # Ω-locking memory (proto-particle seed)
+        self.trapped_omega = 0.0
+        self._prev_trapped_omega = 0.0
+        self.cluster_omega = {}
 
         self.epsilon_label_violation = epsilon_label_violation
 
@@ -84,15 +89,18 @@ class RewriteEngine:
     # --------------------------------------------------
     def step(self):
 
-        # --- Measure BEFORE ---
+        # --------------------------------------------------
+        # Measure BEFORE
+        # --------------------------------------------------
         L_before = self.H.max_chain_length()
         inter_before = worldline_interaction_graph(self.H)
         phi_before = interaction_concentration(inter_before)
         psi_before = closure_density(inter_before)
         omega_before = hierarchical_closure(self.H, inter_before)
 
-        # --- Rewrite proposal (STRONGLY ξ-biased) ---
-
+        # --------------------------------------------------
+        # Rewrite proposal (STRONGLY ξ-biased)
+        # --------------------------------------------------
         protected = {
             v for v, xi_v in self.xi.items()
             if xi_v > 1e-6 and v in self.H.vertices
@@ -100,28 +108,28 @@ class RewriteEngine:
 
         undo = None
         if protected:
-            # 1️⃣ 70% of the time: force rewrite near ξ
             if random.random() < 0.7:
                 v = random.choice(list(protected))
                 undo = edge_creation_rule(self.H, anchor_vertex=v)
-
-            # 2️⃣ otherwise: normal rewrite, but forbid deleting ξ
             else:
                 if random.random() < self.p_create:
                     undo = edge_creation_rule(self.H)
                 else:
-                    undo = vertex_fusion_rule(self.H)  # NO fusion if ξ exists
+                    undo = vertex_fusion_rule(self.H)
         else:
-            # No ξ anywhere → free evolution
             if random.random() < self.p_create:
                 undo = edge_creation_rule(self.H)
             else:
                 undo = vertex_fusion_rule(self.H)
+
         if undo is None:
             self.time += 1
             return False
+        #UTILITY ---
         
+        # --------------------------------------------------
         # Track touched vertices
+        # --------------------------------------------------
         self.last_rewrite = {
             "added_vertices": undo.get("added_vertices", []),
             "removed_vertices": (
@@ -130,20 +138,10 @@ class RewriteEngine:
             ),
             "added_edges": undo.get("added_edges", []),
         }
-        
-        # --- ξ inheritance (FIX #5) ---
-        parents = [
-            v for v in self.touched_vertices()
-            if v in self.xi and self.xi[v] > 1e-6
-        ]
-        
-        for vid in self.last_rewrite["added_vertices"]:
-            if not parents:
-                continue
-            inherited = sum(self.xi[p] for p in parents) / len(parents)
-            self.xi[vid] = self.xi.get(vid, 0.0) + 0.5 * inherited
-           
-        # --- Measure AFTER ---
+
+        # --------------------------------------------------
+        # Measure AFTER
+        # --------------------------------------------------
         L_after = self.H.max_chain_length()
         delta_L = L_after - L_before
 
@@ -156,7 +154,33 @@ class RewriteEngine:
         delta_psi = psi_after - psi_before
         delta_omega = omega_after - omega_before
 
-        # --- Ω gradient ---
+        # --------------------------------------------------
+        # ξ CLUSTER IDENTIFICATION
+        # --------------------------------------------------
+        clusters_before = self.xi_clusters(inter_before)
+        clusters_after  = self.xi_clusters(inter_after)
+
+        # --------------------------------------------------
+        # PER-CLUSTER Ω MEMORY
+        # --------------------------------------------------
+        cluster_omega_now = {}
+        for v, cid in clusters_after.items():
+            cluster_omega_now.setdefault(cid, []).append(
+                local_omega(self.H, inter_after, v)
+            )
+
+        CLUSTER_OMEGA_DECAY = 0.9
+        for cid, vals in cluster_omega_now.items():
+            mean_omega = sum(vals) / len(vals)
+            prev = self.cluster_omega.get(cid, mean_omega)
+            self.cluster_omega[cid] = (
+                CLUSTER_OMEGA_DECAY * prev
+                + (1.0 - CLUSTER_OMEGA_DECAY) * mean_omega
+            )
+
+        # --------------------------------------------------
+        # Ω-GRADIENT (local)
+        # --------------------------------------------------
         touched = self.touched_vertices()
         local_vals = [
             local_omega(self.H, inter_after, v)
@@ -166,8 +190,10 @@ class RewriteEngine:
             max(local_vals) - min(local_vals)
             if len(local_vals) >= 2 else 0.0
         )
-        
-        # --- Ω-gradient memory (propagation support) ---
+
+        # --------------------------------------------------
+        # Ω-GRADIENT MEMORY
+        # --------------------------------------------------
         if not hasattr(self, "omega_memory"):
             self.omega_memory = 0.0
 
@@ -179,7 +205,9 @@ class RewriteEngine:
 
         grad_omega_eff = grad_omega + 0.5 * self.omega_memory
 
-        # --- Defect detection ---
+        # --------------------------------------------------
+        # DEFECT LOGGING
+        # --------------------------------------------------
         if abs(delta_omega) > self.epsilon_label_violation:
             self.defect_log.append({
                 "time": self.time,
@@ -190,14 +218,84 @@ class RewriteEngine:
                 "omega": omega_after
             })
 
-        # --- Acceptance probability ---
+        # --------------------------------------------------
+        # ACCEPTANCE PROBABILITY
+        # --------------------------------------------------
         accept_prob = 1.0
+        
+        # --------------------------------------------------
+        # ξ CLUSTER FRAGMENTATION PENALTY
+        # --------------------------------------------------
+        fragmentation_penalty = 0.0
 
-        # forced-response window (temporary gradient relaxation)
+        # clusters_before and clusters_after already computed above
+        for cid in set(clusters_before.values()):
+            before_size = sum(
+                1 for v in clusters_before if clusters_before[v] == cid
+            )
+            after_size = sum(
+                1 for v in clusters_after if clusters_after[v] == cid
+            )
+
+            # Penalize loss of cluster members
+            if after_size < before_size:
+                fragmentation_penalty += (before_size - after_size)
+
+        CLUSTER_COHESION = 2.5   # strong on purpose
+        accept_prob *= math.exp(-CLUSTER_COHESION * fragmentation_penalty)
+        
+        # --------------------------------------------------
+        # ξ–ξ LOCAL BINDING REWARD (PRE-PARTICLE GLUE)
+        # --------------------------------------------------
+        binding_reward = 0.0
+
+        touched = self.touched_vertices()
+        for v in touched:
+            if self.xi.get(v, 0.0) < 1e-6 or v not in self.H.vertices:
+                continue
+            
+            neighbors = inter_after.get(v, [])
+            for u in neighbors:
+                if self.xi.get(u, 0.0) > 1e-6:
+                    binding_reward += 1.0
+
+        # Each ξ–ξ adjacency counted twice → normalize
+        binding_reward *= 0.5
+
+        XI_BINDING_STRENGTH = 0.15   # start small
+        accept_prob *= math.exp(XI_BINDING_STRENGTH * binding_reward)
+        
+        # prevent numerical blow-up
+        binding_term = XI_BINDING_STRENGTH * binding_reward
+        binding_term = max(min(binding_term, 5.0), -5.0)
+
+        accept_prob *= math.exp(binding_term)
+        if binding_reward > 0 and self.time % 50 == 0:
+            print(f"[bind] t={self.time} reward={binding_reward:.2f}")
+        # --------------------------------------------------
+        # 🔥 CLUSTER Ω STABILITY PENALTY (THIS IS THE KEY)
+        # --------------------------------------------------
+        cluster_penalty = 0.0
+
+        for v, cid in clusters_after.items():
+            if cid not in self.cluster_omega:
+                continue
+
+            omega_now = self.cluster_omega[cid]
+            omega_prev = self.cluster_omega.get(cid, omega_now)
+
+            if omega_now < omega_prev:
+                cluster_penalty += (omega_prev - omega_now)
+
+        CLUSTER_BINDING = 1.2
+        accept_prob *= math.exp(-CLUSTER_BINDING * cluster_penalty)
+
+        # --------------------------------------------------
+        # Standard stability terms
+        # --------------------------------------------------
         if self.forced_time is None or (self.time - self.forced_time) > 20:
             accept_prob *= math.exp(-0.15 * grad_omega_eff)
 
-        # inertia & stability
         if delta_L < 0:
             accept_prob *= math.exp(self.gamma_time * delta_L)
 
@@ -210,29 +308,99 @@ class RewriteEngine:
         if delta_omega > 0:
             accept_prob *= math.exp(self.gamma_hier * delta_omega)
 
-        # defect suppression
         if abs(delta_omega) > self.epsilon_label_violation:
             V = len(self.H.vertices)
             gamma_defect = GAMMA_DEFECT * math.exp(-V / 800)
             accept_prob *= math.exp(-gamma_defect * abs(delta_omega))
-            
-        if self.time % 50 == 0:
-            active = [v for v, x in self.xi.items() if x > 1e-6]
-            print(f"[ξ] t={self.time} active={len(active)}")
 
-        # --- Accept / reject ---
+        # --------------------------------------------------
+        # ACCEPT / REJECT
+        # --------------------------------------------------
         accepted = random.random() <= accept_prob
 
         if not accepted:
             self.undo_changes(undo)
         else:
+            # ξ inheritance
+            parents = [
+                v for v in self.touched_vertices()
+                if v in self.xi and self.xi[v] > 1e-6
+            ]
+
+            for vid in self.last_rewrite["added_vertices"]:
+                if parents:
+                    inherited = sum(self.xi[p] for p in parents) / len(parents)
+                    self.xi[vid] = self.xi.get(vid, 0.0) + 0.5 * inherited
+
             self._propagate_xi(inter_after)
-            self.record_rewrite(undo)
+            # --------------------------------------------------
+            # Record rewrite WITH cluster information
+            # --------------------------------------------------
+            clusters_after = self.xi_clusters(inter_after)
+
+            rewrite_entry = {
+                "time": self.time,
+                "rewrite": undo,
+                "xi_support": [
+                    v for v in clusters_after.keys()
+                    if v in self.touched_vertices()
+                ],
+                "cluster_ids": list({
+                    clusters_after[v]
+                    for v in clusters_after
+                    if v in self.touched_vertices()
+                }),
+                "cluster_sizes": {
+                    cid: sum(1 for v in clusters_after if clusters_after[v] == cid)
+                    for cid in set(clusters_after.values())
+                },
+                "cluster_omega": dict(self.cluster_omega),
+            }
+
+            self.rewrite_history.append(rewrite_entry)
 
         self.time += 1
         return accepted
-    
-        
+
+    # --------------------------------------------------
+    # ξ CLUSTER IDENTIFICATION
+    # --------------------------------------------------
+    def xi_clusters(self, inter):
+        """
+        Identify connected components of ξ-support
+        in the interaction graph.
+
+        Returns:
+            dict: vertex_id -> cluster_id
+        """
+        clusters = {}
+        visited = set()
+        cid = 0
+
+        xi_vertices = {
+            v for v, x in self.xi.items()
+            if x > 1e-6 and v in self.H.vertices
+        }
+
+        for v in xi_vertices:
+            if v in visited:
+                continue
+
+            stack = [v]
+            visited.add(v)
+            clusters[v] = cid
+
+            while stack:
+                u = stack.pop()
+                for nbr in inter.get(u, []):
+                    if nbr in xi_vertices and nbr not in visited:
+                        visited.add(nbr)
+                        clusters[nbr] = cid
+                        stack.append(nbr)
+
+            cid += 1
+
+        return clusters
     # --------------------------------------------------
     # Forced probe (Path A)
     # --------------------------------------------------
