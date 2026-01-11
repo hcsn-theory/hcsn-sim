@@ -2,6 +2,7 @@
 
 import random
 import math
+from tracemalloc import start
 
 from engine.observables import hierarchical_closure
 from engine.rules import edge_creation_rule, vertex_fusion_rule
@@ -66,6 +67,12 @@ class RewriteEngine:
         self.trapped_omega = 0.0
         self._prev_trapped_omega = 0.0
         self.cluster_omega = {}
+        self.cluster_prev = {}
+        # --- Cluster adjacency memory (proto-particle glue) ---
+        self.cluster_links = {}        # frozenset({v,u}) -> strength
+        self.CLUSTER_LINK_DECAY = 0.92
+        self.CLUSTER_LINK_MAX   = 5.0
+        self.CLUSTER_BINDING_STRENGTH = 0.25
 
         self.epsilon_label_violation = epsilon_label_violation
 
@@ -73,6 +80,9 @@ class RewriteEngine:
         self.xi = {}
         self.XI_DECAY = XI_DECAY
         self.XI_COUPLING = XI_COUPLING
+        self.xi_centroid = None
+        self.xi_threshold = 1e-6
+        self.xi_surface_lambda = 0.03
 
         self.defect_log = []
         self.rewrite_history = []
@@ -153,18 +163,77 @@ class RewriteEngine:
         delta_phi = phi_after - phi_before
         delta_psi = psi_after - psi_before
         delta_omega = omega_after - omega_before
+        
+        # --------------------------------------------------
+        # ξ–ξ CLUSTER ADJACENCY MEMORY (spatial cohesion)
+        # --------------------------------------------------
+        new_links = {}
+
+        for v, xi_v in self.xi.items():
+            if xi_v < 1e-6 or v not in self.H.vertices:
+                continue
+            
+            for u in inter_after.get(v, []):
+                if self.xi.get(u, 0.0) > 1e-6:
+                    key = frozenset((v, u))
+                    prev = self.cluster_links.get(key, 0.0)
+                    strength = min(prev + 1.0, self.CLUSTER_LINK_MAX)
+                    new_links[key] = strength
+
+        # decay old links
+        for key, val in self.cluster_links.items():
+            if key not in new_links:
+                decayed = self.CLUSTER_LINK_DECAY * val
+                if decayed > 1e-3:
+                    new_links[key] = decayed
+
+        self.cluster_links = new_links
 
         # --------------------------------------------------
         # ξ CLUSTER IDENTIFICATION
         # --------------------------------------------------
         clusters_before = self.xi_clusters(inter_before)
         clusters_after  = self.xi_clusters(inter_after)
+        clusters_now    = clusters_after
+        
+        
+        # --------------------------------------------------
+        # ξ TRUE NUCLEATION REPULSION (new cluster protection)
+        # --------------------------------------------------
+        NUCLEATION_REPULSION = 3.0   # strong, but local
+        
+        new_cluster_ids = (
+            set(clusters_after.values())
+            - set(clusters_before.values())
+        )
+        
+        if new_cluster_ids:
+            for v, cid_v in clusters_after.items():
+                if cid_v not in new_cluster_ids:
+                    continue
+                if self.xi.get(v, 0.0) < 1e-6:
+                    continue
+                
+                for u in inter_after.get(v, []):
+                    cid_u = clusters_after.get(u)
+                    if cid_u is None:
+                        continue
+                    
+                    if cid_u not in new_cluster_ids:
+                        accept_prob *= math.exp(-NUCLEATION_REPULSION)
+                        
+            if self.time % 50 == 0:
+                print(
+                    f"[nucleate] t={self.time} "
+                    f"new_clusters={len(new_cluster_ids)}"
+                )
 
         # --------------------------------------------------
         # PER-CLUSTER Ω MEMORY
         # --------------------------------------------------
+        prev_cluster_omega = dict(self.cluster_omega)
         cluster_omega_now = {}
-        for v, cid in clusters_after.items():
+        for v, cid in clusters_now.items():
             cluster_omega_now.setdefault(cid, []).append(
                 local_omega(self.H, inter_after, v)
             )
@@ -204,7 +273,26 @@ class RewriteEngine:
         )
 
         grad_omega_eff = grad_omega + 0.5 * self.omega_memory
+        
+        # --------------------------------------------------
+        # ξ SPATIAL LOCALIZATION (diffusion suppression)
+        # --------------------------------------------------
+        xi_support = [v for v, x in self.xi.items() if x > 1e-6]
+        
+        if xi_support:
+            new_centroid = sum(xi_support) / len(xi_support)
 
+            if self.xi_centroid is None:
+                xi_drift_penalty = 0.0
+            else:
+                xi_drift_penalty = abs(new_centroid - self.xi_centroid)
+
+            self.xi_centroid = new_centroid
+        else:
+            xi_drift_penalty = 0.0
+            self.xi_centroid = None
+        
+        
         # --------------------------------------------------
         # DEFECT LOGGING
         # --------------------------------------------------
@@ -224,6 +312,170 @@ class RewriteEngine:
         accept_prob = 1.0
         
         # --------------------------------------------------
+        # LOCAL Ω CONFINEMENT (proto-particle mass core)
+        # --------------------------------------------------
+        omega_cluster_before = []
+        omega_cluster_after  = []
+        omega_out_before     = []
+        omega_out_after      = []
+        
+        xi_support_before = {
+            v for v, x in self.xi.items()
+            if x > 1e-6 and v in self.H.vertices
+        }
+        
+        # ξ core + immediate boundary only
+        boundary = set()
+        for v in xi_support_before:
+            boundary.update(inter_before.get(v, []))
+
+        relevant = set(xi_support_before) | boundary
+
+        for v in relevant:
+            if v not in self.H.vertices:
+                continue
+            
+            w_before = self.omega_potential(inter_before, v)
+            w_after  = self.omega_potential(inter_after, v)
+
+            if v in xi_support_before:
+                omega_cluster_before.append(w_before)
+                omega_cluster_after.append(w_after)
+            else:
+                omega_out_before.append(w_before)
+                omega_out_after.append(w_after)
+        
+        # Safe means
+        def mean(xs):
+            return sum(xs) / len(xs) if xs else 0.0
+        
+        Ωc_before = mean(omega_cluster_before)
+        Ωc_after  = mean(omega_cluster_after)
+        Ωo_before = mean(omega_out_before)
+        Ωo_after  = mean(omega_out_after)
+        
+        # Confinement signal
+        delta_confined = (Ωc_after - Ωc_before) - (Ωo_after - Ωo_before)
+        
+        # --- omega trapping (mass memory) ---
+        if delta_confined > 0:
+            self.trapped_omega = (
+                0.95 * self.trapped_omega
+                + 0.05 * delta_confined
+            )
+        else:
+            self.trapped_omega *= 0.95
+        
+        # --------------------------------------------------
+        # CONFINEMENT PENALTY (mass emergence)
+        # --------------------------------------------------
+        OMEGA_CONFINEMENT_STRENGTH = 2.0  # start moderate
+        
+        if delta_confined < 0:
+            # clamp to avoid overflow
+            delta_confined = max(delta_confined, -5.0)
+            accept_prob *= math.exp(
+                OMEGA_CONFINEMENT_STRENGTH * delta_confined
+            )
+        
+        # DEBUG
+        if self.time % 100 == 0 and xi_support_before:
+            print(
+                f"[confine] t={self.time} "
+                f"ΔΩ_conf={delta_confined:.3f} "
+                f"Ωc={Ωc_after:.3f} Ωo={Ωo_after:.3f}"
+            )
+        
+        # --------------------------------------------------
+        # CLUSTER SIZE MASS TERM (prevents ξ condensation)
+        # --------------------------------------------------
+        cluster_size_penalty = 0.0
+        
+        for cid in set(clusters_after.values()):
+            size = sum(1 for v in clusters_after if clusters_after[v] == cid)
+        
+            # quadratic cost favors finite size
+            if size > 1:
+                cluster_size_penalty += (size - 1) ** 2
+        
+        CLUSTER_MASS = 0.002   # START SMALL
+        
+        cluster_size_penalty = min(cluster_size_penalty, 100.0)
+        
+        accept_prob *= math.exp(-CLUSTER_MASS * cluster_size_penalty)
+        
+        if self.time % 200 == 0 and cluster_size_penalty > 0:
+            print(
+                f"[mass] t={self.time} "
+                f"penalty={cluster_size_penalty:.1f}"
+            )
+        
+        # --------------------------------------------------
+        # ξ DIFFUSION PENALTY (localization mass)
+        # --------------------------------------------------
+        XI_DIFFUSION_STRENGTH = 0.02  # start very small
+
+        xi_drift_penalty = min(xi_drift_penalty, 50)
+
+        accept_prob *= math.exp(-XI_DIFFUSION_STRENGTH * xi_drift_penalty)
+
+        if xi_drift_penalty > 0 and self.time % 100 == 0:
+            print(
+                f"[loc] t={self.time} "
+                f"drift={xi_drift_penalty}"
+            )
+
+        # --------------------------------------------------
+        # CLUSTER ADJACENCY STABILITY REWARD
+        # --------------------------------------------------
+        link_reward = sum(self.cluster_links.values())
+        
+        # hard clamp for numerical safety
+        link_reward = min(link_reward, 10.0)
+        
+        CLUSTER_ADJ_REWARD = 0.05
+        accept_prob *= math.exp(CLUSTER_ADJ_REWARD * link_reward)
+        
+        # debug
+        if link_reward > 0 and self.time % 100 == 0:
+            print(
+                f"[adj] t={self.time} "
+                f"links={len(self.cluster_links)} "
+                f"reward={link_reward:.2f}"
+            )
+            
+        # --------------------------------------------------
+        # ξ SURFACE TENSION (forces compact clusters)
+        # --------------------------------------------------
+        surface_penalty = 0.0
+        
+        for v, xi_v in self.xi.items():
+            if xi_v < 1e-6 or v not in self.H.vertices:
+                continue
+            
+            neighbors = inter_after.get(v, [])
+            xi_neighbors = sum(
+                1 for u in neighbors
+                if self.xi.get(u, 0.0) > 1e-6
+            )
+        
+            # penalize exposed ξ (few neighbors)
+            if xi_neighbors < 2:
+                surface_penalty += (2 - xi_neighbors)
+        
+        SURFACE_TENSION = 0.8   # strong on purpose
+        surface_penalty = min(surface_penalty, 50.0)
+        
+        accept_prob *= math.exp(-SURFACE_TENSION * surface_penalty)
+        
+        if self.time % 200 == 0 and surface_penalty > 0:
+            print(
+                f"[surface] t={self.time} "
+                f"penalty={surface_penalty:.1f}"
+            )
+
+        
+        # --------------------------------------------------
         # ξ CLUSTER FRAGMENTATION PENALTY
         # --------------------------------------------------
         fragmentation_penalty = 0.0
@@ -241,7 +493,7 @@ class RewriteEngine:
             if after_size < before_size:
                 fragmentation_penalty += (before_size - after_size)
 
-        CLUSTER_COHESION = 2.5   # strong on purpose
+        CLUSTER_COHESION = 1.2   # strong on purpose
         accept_prob *= math.exp(-CLUSTER_COHESION * fragmentation_penalty)
         
         # --------------------------------------------------
@@ -254,22 +506,22 @@ class RewriteEngine:
             if self.xi.get(v, 0.0) < 1e-6 or v not in self.H.vertices:
                 continue
             
-            neighbors = inter_after.get(v, [])
-            for u in neighbors:
+            for u in inter_after.get(v, []):
                 if self.xi.get(u, 0.0) > 1e-6:
                     binding_reward += 1.0
 
-        # Each ξ–ξ adjacency counted twice → normalize
+        # normalize double counting
         binding_reward *= 0.5
 
-        XI_BINDING_STRENGTH = 0.15   # start small
-        accept_prob *= math.exp(XI_BINDING_STRENGTH * binding_reward)
-        
-        # prevent numerical blow-up
+        XI_BINDING_STRENGTH = 0.15
         binding_term = XI_BINDING_STRENGTH * binding_reward
-        binding_term = max(min(binding_term, 5.0), -5.0)
+
+        # hard clamp (critical)
+        binding_term = max(min(binding_term, 5.0), 0.0)
 
         accept_prob *= math.exp(binding_term)
+
+        # debug
         if binding_reward > 0 and self.time % 50 == 0:
             print(f"[bind] t={self.time} reward={binding_reward:.2f}")
         # --------------------------------------------------
@@ -282,14 +534,44 @@ class RewriteEngine:
                 continue
 
             omega_now = self.cluster_omega[cid]
-            omega_prev = self.cluster_omega.get(cid, omega_now)
+            omega_prev = prev_cluster_omega.get(cid, omega_now)
 
             if omega_now < omega_prev:
                 cluster_penalty += (omega_prev - omega_now)
 
         CLUSTER_BINDING = 1.2
         accept_prob *= math.exp(-CLUSTER_BINDING * cluster_penalty)
+        # --- DEBUG: cluster Ω stability ---
+        if cluster_penalty > 0 and self.time % 50 == 0:
+            print(
+                f"[cluster] t={self.time} "
+                f"penalty={cluster_penalty:.3f} "
+                f"clusters={len(self.cluster_omega)}"
+            )
+            
+        # --------------------------------------------------
+        # CLUSTER COHESION PENALTY (proto-particle mass)
+        # --------------------------------------------------
+        binding_loss = 0.0
 
+        touched = self.touched_vertices()
+        for key, strength in self.cluster_links.items():
+            v, u = tuple(key)
+
+            # penalize if rewrite breaks a strong ξ–ξ link
+            if (v in touched or u in touched):
+                if u not in inter_after.get(v, []):
+                    binding_loss += strength
+
+        # clamp to prevent overflow
+        binding_loss = min(binding_loss, 10.0)
+
+        accept_prob *= math.exp(
+            -self.CLUSTER_BINDING_STRENGTH * binding_loss
+        )
+                
+        
+        
         # --------------------------------------------------
         # Standard stability terms
         # --------------------------------------------------
@@ -312,7 +594,16 @@ class RewriteEngine:
             V = len(self.H.vertices)
             gamma_defect = GAMMA_DEFECT * math.exp(-V / 800)
             accept_prob *= math.exp(-gamma_defect * abs(delta_omega))
-
+        
+        # --- DEBUG: proto-particle candidate ---
+        if self.time % 100 == 0:
+           xi_support = [v for v, x in self.xi.items() if x > 1e-6]
+           if len(xi_support) >= 2:
+               print(
+                   f"[proto?] t={self.time} "
+                   f"|ξ|={len(xi_support)} "
+                   f"Ω_trapped={getattr(self, 'trapped_omega', 0.0):.3f}"
+               )
         # --------------------------------------------------
         # ACCEPT / REJECT
         # --------------------------------------------------
@@ -331,12 +622,28 @@ class RewriteEngine:
                 if parents:
                     inherited = sum(self.xi[p] for p in parents) / len(parents)
                     self.xi[vid] = self.xi.get(vid, 0.0) + 0.5 * inherited
-
-            self._propagate_xi(inter_after)
+                    
+            
+            clusters_now = self.xi_clusters(inter_after)
+            self._propagate_xi(inter_after, clusters_now)
+            # --- ξ surface tension (localization) ---
+            xi_support = {
+                v for v, x in self.xi.items()
+                if x > self.xi_threshold
+            }
+            
+            if xi_support:
+                boundary = self.xi_boundary(xi_support, inter_after)
+                
+                for v in boundary:
+                    self.xi[v] -= self.xi_surface_lambda
+                    if self.xi[v] < 0.0:
+                        self.xi[v] = 0.0
             # --------------------------------------------------
             # Record rewrite WITH cluster information
-            # --------------------------------------------------
+            # -------------------------------------------   -------
             clusters_after = self.xi_clusters(inter_after)
+            
 
             rewrite_entry = {
                 "time": self.time,
@@ -361,7 +668,121 @@ class RewriteEngine:
 
         self.time += 1
         return accepted
+    
+    # --------------------------------------------------
+    # ξ BOUNDARY IDENTIFICATION
+    # --------------------------------------------------
+    def xi_boundary(self, xi_support, inter):
+        """
+        Compute ξ-boundary vertices using hyperedge incidence.
+        A vertex is boundary if it shares a hyperedge with a non-ξ vertex.
+        """
+        boundary = set()
 
+        for v in xi_support:
+            for u in inter.get(v, []):
+                if u not in xi_support:
+                    boundary.add(v)
+                    break
+                
+        return boundary
+    # --------------------------------------------------
+    # Graph distance utility
+    # --------------------------------------------------
+    def graph_distance(self, inter, start, targets, max_depth=50):
+        """BFS distance from start to nearest target"""
+        if start in targets:
+            return 0
+
+        visited = {start}
+        frontier = {start}
+        depth = 0
+
+        while frontier and depth < max_depth:
+            depth += 1
+            next_frontier = set()
+
+            for v in frontier:
+                for u in inter.get(v, []):
+                    if u in visited:
+                        continue
+                    if u in targets:
+                        return depth
+                    visited.add(u)
+                    next_frontier.add(u)
+
+            frontier = next_frontier
+
+        return float("inf")
+    
+    
+    # --------------------------------------------------
+    # Forced probe (Path B)
+    # --------------------------------------------------
+    def force_second_proto_object(
+        self,
+        omega_kick=0.3,
+        xi_seed=1.0,
+        min_distance=10,
+    ):
+        """
+        Inject a second proto-object far from existing ξ support.
+        """
+    
+        inter = worldline_interaction_graph(self.H)
+        xi_support = {v for v, x in self.xi.items() if x > 1e-6}
+    
+        # If no first proto-object exists, abort
+        if not xi_support:
+            return False
+    
+        # Candidate vertices: not in ξ
+        candidates = [
+            v for v in self.H.vertices
+            if v not in xi_support
+        ]
+    
+        random.shuffle(candidates)
+    
+        for v in candidates:
+            d = self.graph_distance(inter, v, xi_support)
+            if d >= min_distance:
+                # Inject Ω defect
+                self.defect_log.append({
+                    "time": self.time,
+                    "birth_time": self.time,
+                    "delta_Q": omega_kick,
+                    "omega": None,
+                    "forced": True,
+                    "anchor_vertex": v,
+                    "second": True,
+                })
+    
+                # Seed ξ locally
+                self.xi[v] = xi_seed
+    
+                # Temporary nucleation protection
+                self.forced_time = self.time
+    
+                print(
+                    f"### SECOND PROBE at t={self.time} | "
+                    f"v={v} | dist={d}"
+                )
+    
+                return True
+    
+        return False
+
+    # --------------------------------------------------
+    #--Added function for local omega potential--
+    # --------------------------------------------------
+    def omega_potential(self, inter, v):
+        """
+        Pre-closure Ω carrier:
+        measures local interaction pressure before loops form
+        """
+        return len(inter.get(v, []))
+    
     # --------------------------------------------------
     # ξ CLUSTER IDENTIFICATION
     # --------------------------------------------------
@@ -443,20 +864,26 @@ class RewriteEngine:
     # --------------------------------------------------
     # ξ propagation (single, clean)
     # --------------------------------------------------
-    def _propagate_xi(self, inter):
+    def _propagate_xi(self, inter, clusters):
         new_xi = dict(self.xi)
+        clusters = self.xi_clusters(inter)
 
         for v, xi_v in self.xi.items():
             if xi_v < 1e-6:
                 continue
-
-            xi_v *= self.XI_DECAY
+            
+            cid_v = clusters.get(v)
+            xi_v = self.XI_DECAY
+            
             neighbors = inter.get(v, [])
-
-            if neighbors:
-                share = xi_v / len(neighbors)
-                for u in neighbors:
-                    new_xi[u] = new_xi.get(u, 0.0) + 0.5 * share
+            for u in neighbors:
+                cid_u = clusters.get(u)
+                    
+                    # Boost intra-cluster coupling
+                if cid_u is not None and cid_v is not None and cid_u != cid_v:
+                    continue
+                    
+                new_xi[u] = new_xi.get(u, 0.0) + 0.5 * xi_v / max(len(neighbors), 1)
 
             new_xi[v] = new_xi.get(v, 0.0) + 0.5 * xi_v
 
@@ -495,11 +922,9 @@ class RewriteEngine:
                 "removed_edges": list(undo.get("removed_edges", {}).keys()),
             },
             "grad_omega": getattr(self, "_last_grad_omega", None),
-
-            # ✅ THIS IS THE FIX
             "xi_support": [
-                v for v in touched
-                if self.xi.get(v, 0.0) > 1e-6
+                v for v, x in self.xi.items()
+                if x > 1e-6 and v in self.H.vertices
             ],
         })
         #---Temp debug print---

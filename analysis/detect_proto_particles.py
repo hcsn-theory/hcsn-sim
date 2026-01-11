@@ -1,12 +1,14 @@
+# analysis/detect_proto_particles.py
+
 import json
 import sys
 from collections import defaultdict
 
 # -----------------------------
-# Parameters (tune later)
+# Detection thresholds
 # -----------------------------
-XI_THRESHOLD = 1e-6      # what counts as ξ-active
-OVERLAP_ALPHA = 0.5      # identity overlap threshold
+MIN_LIFETIME = 20        # minimum lifetime (timesteps)
+MIN_MEAN_SIZE = 10       # minimum average ξ-cluster size
 
 # -----------------------------
 # Load data
@@ -15,102 +17,71 @@ path = sys.argv[1]
 with open(path) as f:
     data = json.load(f)
 
-rewrites = data["rewrite_history"]
+rewrites = data.get("rewrite_history", [])
 
 # -----------------------------
-# Extract ξ-active sets per time
+# Track clusters by cluster_id
 # -----------------------------
-xi_sets = defaultdict(set)
+cluster_birth = {}                  # cid -> birth time
+cluster_last_seen = {}              # cid -> last time seen
+cluster_sizes_over_time = defaultdict(list)  # cid -> [sizes]
 
 for r in rewrites:
     t = r["time"]
-    xi_support = r.get("xi_support", [])
-    for v in xi_support:
-        xi_sets[t].add(v)
+    cluster_sizes = r.get("cluster_sizes", {})
 
-times = sorted(xi_sets.keys())
+    for cid, size in cluster_sizes.items():
+        if size <= 0:
+            continue
 
-# -----------------------------
-# Cluster identity tracking
-# -----------------------------
-clusters = {}      # cluster_id -> set(vertices)
-cluster_birth = {}
-cluster_death = {}
+        # first appearance
+        if cid not in cluster_birth:
+            cluster_birth[cid] = t
 
-next_cluster_id = 0
-
-def overlap(a, b):
-    if not a or not b:
-        return 0.0
-    return len(a & b) / len(a | b)
+        cluster_last_seen[cid] = t
+        cluster_sizes_over_time[cid].append(size)
 
 # -----------------------------
-# Time evolution
-# -----------------------------
-for i, t in enumerate(times):
-    current = xi_sets[t]
-    matched = set()
-
-    if i == 0:
-        clusters[0] = current
-        cluster_birth[0] = t
-        next_cluster_id = 1
-        continue
-
-    prev_t = times[i - 1]
-    prev_clusters = {
-        cid: verts for cid, verts in clusters.items()
-        if cluster_death.get(cid) is None
-    }
-
-    used_prev = set()
-
-    for cid, verts in prev_clusters.items():
-        ov = overlap(verts, current)
-        if ov >= OVERLAP_ALPHA:
-            clusters[cid] = current
-            matched.add(cid)
-            used_prev.add(cid)
-
-    if not matched and current:
-        clusters[next_cluster_id] = current
-        cluster_birth[next_cluster_id] = t
-        next_cluster_id += 1
-
-    for cid in prev_clusters:
-        if cid not in used_prev and cid not in cluster_death:
-            cluster_death[cid] = t
-
-# Close remaining clusters
-final_time = times[-1]
-for cid in clusters:
-    if cid not in cluster_death:
-        cluster_death[cid] = final_time
-
-# -----------------------------
-# Report statistics
+# Compute statistics
 # -----------------------------
 lifetimes = []
-sizes = []
+mean_sizes = []
 
-for cid in clusters:
-    birth = cluster_birth.get(cid)
-    death = cluster_death.get(cid)
-    if birth is None or death is None:
+for cid, sizes in cluster_sizes_over_time.items():
+    birth = cluster_birth[cid]
+    death = cluster_last_seen[cid]
+    lifetime = death - birth
+
+    if lifetime <= 0:
         continue
-    lifetimes.append(death - birth)
-    sizes.append(len(clusters[cid]))
 
+    mean_size = sum(sizes) / len(sizes)
+
+    lifetimes.append(lifetime)
+    mean_sizes.append(mean_size)
+
+# -----------------------------
+# Aggregate results
+# -----------------------------
+total_objects = len(lifetimes)
+mean_life = sum(lifetimes) / total_objects if lifetimes else 0.0
+max_life = max(lifetimes) if lifetimes else 0
+mean_cluster_size = (
+    sum(mean_sizes) / len(mean_sizes) if mean_sizes else 0.0
+)
+
+# -----------------------------
+# Report
+# -----------------------------
 print("\n=== Proto-Particle Detection ===")
-print(f"Total clusters detected : {len(lifetimes)}")
-print(f"Mean lifetime           : {sum(lifetimes)/len(lifetimes):.2f}")
-print(f"Max lifetime            : {max(lifetimes)}")
-print(f"Mean cluster size       : {sum(sizes)/len(sizes):.2f}")
+print(f"Total proto-objects     : {total_objects}")
+print(f"Mean lifetime           : {mean_life:.2f}")
+print(f"Max lifetime            : {max_life}")
+print(f"Mean ξ-cluster size     : {mean_cluster_size:.2f}")
 
-# Classification
-if max(lifetimes) < 20:
-    print("❌ No proto-particles (noise)")
-elif sum(lifetimes)/len(lifetimes) < 50:
+if mean_life >= MIN_LIFETIME and mean_cluster_size >= MIN_MEAN_SIZE:
+    print("✅ Proto-particles detected")
+elif mean_life >= 5:
     print("⚠ Marginal proto-objects")
 else:
-    print("✅ Proto-particles detected")
+    print("❌ No proto-particles (noise)")

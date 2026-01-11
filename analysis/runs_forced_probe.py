@@ -6,14 +6,15 @@ from engine.observables import hierarchical_closure, worldline_interaction_graph
 from engine.rules import edge_creation_rule
 
 TARGETS = {
-    "subcritical": 0.65,
     "critical": 1.10,
-    "supercritical": 1.45,
 }
 
 TOL = 0.05
-MAX_STEPS = 8000
-POST_STEPS = 3000
+MAX_STEPS = 20000
+
+# NEW: split post steps
+STABILIZE_STEPS = 1200
+INTERACTION_STEPS = 5000
 
 for label, Omega_target in TARGETS.items():
     print(f"\n=== Running forced probe: {label} ===")
@@ -40,7 +41,7 @@ for label, Omega_target in TARGETS.items():
         if abs(Omega - Omega_target) < TOL:
             probe_time = engine.time
 
-            # --- FORCED PROBE ---
+            # --- FIRST FORCED PROBE ---
             success = engine.force_defect(magnitude=0.3)
             if not success:
                 print("⚠ Forced probe failed")
@@ -50,15 +51,35 @@ for label, Omega_target in TARGETS.items():
                     f"### FORCED PROBE at t={engine.time} | "
                     f"Ω={Omega:.3f} | v={probe_vertex}"
                 )
-            break   # ← IMPORTANT: stop searching once probe is injected
-    
+            break
+
     if probe_time is None:
         print("⚠ Did not reach target Ω - forcing at early time")
         engine.force_defect(magnitude=0.3)
         probe_time = engine.time
 
-    # --- post-probe evolution ---
-    for _ in range(POST_STEPS):
+    # -------------------------------------------------
+    # NEW PART 1: let first proto-particle stabilize
+    # -------------------------------------------------
+    for _ in range(STABILIZE_STEPS):
+        engine.step()
+
+    # -------------------------------------------------
+    # NEW PART 2: inject second proto-object
+    # -------------------------------------------------
+    success = engine.force_second_proto_object(
+        omega_kick=0.3,
+        xi_seed=1.0,
+        min_distance=15,
+    )
+
+    if not success:
+        print("⚠ Second proto-object injection failed")
+
+    # -------------------------------------------------
+    # NEW PART 3: observe interaction
+    # -------------------------------------------------
+    for _ in range(INTERACTION_STEPS):
         engine.step()
 
     # --- save ---
