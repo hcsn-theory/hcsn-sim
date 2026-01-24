@@ -7,81 +7,122 @@ from collections import defaultdict
 # -----------------------------
 # Detection thresholds
 # -----------------------------
-MIN_LIFETIME = 20        # minimum lifetime (timesteps)
-MIN_MEAN_SIZE = 10       # minimum average ξ-cluster size
+MIN_LIFETIME = 20
+MIN_MEAN_SIZE = 10
 
-# -----------------------------
-# Load data
-# -----------------------------
-path = sys.argv[1]
-with open(path) as f:
-    data = json.load(f)
 
-rewrites = data.get("rewrite_history", [])
+# ============================================================
+# CORE FUNCTION (IMPORT-SAFE)
+# ============================================================
+def detect_clusters(rewrites):
+    """
+    Detect and track proto-particles (ξ-clusters) by cluster ID.
 
-# -----------------------------
-# Track clusters by cluster_id
-# -----------------------------
-cluster_birth = {}                  # cid -> birth time
-cluster_last_seen = {}              # cid -> last time seen
-cluster_sizes_over_time = defaultdict(list)  # cid -> [sizes]
+    Returns:
+        dict with statistics and per-cluster data
+    """
 
-for r in rewrites:
-    t = r["time"]
-    cluster_sizes = r.get("cluster_sizes", {})
+    cluster_birth = {}
+    cluster_last_seen = {}
+    cluster_sizes = defaultdict(list)
 
-    for cid, size in cluster_sizes.items():
-        if size <= 0:
+    # -----------------------------
+    # Track clusters over time
+    # -----------------------------
+    for r in rewrites:
+        t = r["time"]
+        sizes = r.get("cluster_sizes", {})
+
+        for cid, size in sizes.items():
+            if size <= 0:
+                continue
+
+            if cid not in cluster_birth:
+                cluster_birth[cid] = t
+
+            cluster_last_seen[cid] = t
+            cluster_sizes[cid].append(size)
+
+    # -----------------------------
+    # Compute statistics
+    # -----------------------------
+    lifetimes = {}
+    mean_sizes = {}
+
+    for cid in cluster_birth:
+        lifetime = cluster_last_seen[cid] - cluster_birth[cid]
+        if lifetime <= 0:
             continue
 
-        # first appearance
-        if cid not in cluster_birth:
-            cluster_birth[cid] = t
+        lifetimes[cid] = lifetime
+        mean_sizes[cid] = sum(cluster_sizes[cid]) / len(cluster_sizes[cid])
 
-        cluster_last_seen[cid] = t
-        cluster_sizes_over_time[cid].append(size)
+    # -----------------------------
+    # Global stats
+    # -----------------------------
+    valid_clusters = [
+        cid for cid in lifetimes
+        if lifetimes[cid] >= MIN_LIFETIME
+        and mean_sizes[cid] >= MIN_MEAN_SIZE
+    ]
 
-# -----------------------------
-# Compute statistics
-# -----------------------------
-lifetimes = []
-mean_sizes = []
+    stats = {
+        "num_clusters": len(valid_clusters),
+        "lifetimes": lifetimes,
+        "mean_sizes": mean_sizes,
+        "valid_clusters": valid_clusters,
+        "mean_lifetime": (
+            sum(lifetimes[cid] for cid in valid_clusters) / len(valid_clusters)
+            if valid_clusters else 0.0
+        ),
+        "max_lifetime": (
+            max(lifetimes[cid] for cid in valid_clusters)
+            if valid_clusters else 0
+        ),
+        "mean_cluster_size": (
+            sum(mean_sizes[cid] for cid in valid_clusters) / len(valid_clusters)
+            if valid_clusters else 0.0
+        ),
+    }
 
-for cid, sizes in cluster_sizes_over_time.items():
-    birth = cluster_birth[cid]
-    death = cluster_last_seen[cid]
-    lifetime = death - birth
+    return stats
 
-    if lifetime <= 0:
-        continue
 
-    mean_size = sum(sizes) / len(sizes)
+# ============================================================
+# CLI ENTRY POINT
+# ============================================================
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python3 -m analysis.detect_proto_particles <json_file>")
+        sys.exit(1)
 
-    lifetimes.append(lifetime)
-    mean_sizes.append(mean_size)
+    path = sys.argv[1]
+    with open(path) as f:
+        data = json.load(f)
 
-# -----------------------------
-# Aggregate results
-# -----------------------------
-total_objects = len(lifetimes)
-mean_life = sum(lifetimes) / total_objects if lifetimes else 0.0
-max_life = max(lifetimes) if lifetimes else 0
-mean_cluster_size = (
-    sum(mean_sizes) / len(mean_sizes) if mean_sizes else 0.0
-)
+    rewrites = data.get("rewrite_history", [])
 
-# -----------------------------
-# Report
-# -----------------------------
-print("\n=== Proto-Particle Detection ===")
-print(f"Total proto-objects     : {total_objects}")
-print(f"Mean lifetime           : {mean_life:.2f}")
-print(f"Max lifetime            : {max_life}")
-print(f"Mean ξ-cluster size     : {mean_cluster_size:.2f}")
+    stats = detect_clusters(rewrites)
 
-if mean_life >= MIN_LIFETIME and mean_cluster_size >= MIN_MEAN_SIZE:
-    print("✅ Proto-particles detected")
-elif mean_life >= 5:
-    print("⚠ Marginal proto-objects")
-else:
-    print("❌ No proto-particles (noise)")
+    # -----------------------------
+    # Report
+    # -----------------------------
+    print("\n=== Proto-Particle Detection ===")
+    print(f"Total proto-objects     : {stats['num_clusters']}")
+    print(f"Mean lifetime           : {stats['mean_lifetime']:.2f}")
+    print(f"Max lifetime            : {stats['max_lifetime']}")
+    print(f"Mean ξ-cluster size     : {stats['mean_cluster_size']:.2f}")
+
+    if stats["num_clusters"] > 0:
+        print("✅ Proto-particles detected")
+    elif stats["mean_lifetime"] >= 5:
+        print("⚠ Marginal proto-objects")
+    else:
+        print("❌ No proto-particles (noise)")
+
+
+# ============================================================
+# SAFE EXECUTION
+# ============================================================
+if __name__ == "__main__":
+    main()

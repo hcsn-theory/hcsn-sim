@@ -19,7 +19,7 @@ def edge_creation_rule(H, anchor_vertex=None):
     else:
         candidates = [
             e for e in H.hyperedges.values()
-            if anchor_vertex in [v.id for v in e.vertices]
+            if anchor_vertex in e.vertices
         ]
         if not candidates:
             return None

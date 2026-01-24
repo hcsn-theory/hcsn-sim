@@ -58,6 +58,8 @@ class Hypergraph:
     # ---------- Hyperedge operations ----------
 
     def add_hyperedge(self, vertices):
+        for v in vertices:
+            assert hasattr(v, "id"), f"Non-Vertex in hyperedge: {v}"
         edge = Hyperedge(vertices)
         self.hyperedges[edge.id] = edge
         return edge
