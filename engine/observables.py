@@ -304,35 +304,35 @@ def defect_density(H):
     return label_frustration(H) / len(H.hyperedges)
 
 
-def local_hierarchical_closure(H, inter, v_id, radius=2):
+# def local_hierarchical_closure(H, inter, v_id, radius=2):
     
-    #Local hierarchical closure around vertex v_id.
+#     #Local hierarchical closure around vertex v_id.
     
-    # 1. Find neighborhood
-    frontier = {v_id}
-    visited = {v_id}
+#     # 1. Find neighborhood
+#     frontier = {v_id}
+#     visited = {v_id}
 
-    for _ in range(radius):
-        new = set()
-        for u in frontier:
-            for w in inter.neighbors(u):
-                if w not in visited:
-                    visited.add(w)
-                    new.add(w)
-        frontier = new
+#     for _ in range(radius):
+#         new = set()
+#         for u in frontier:
+#             for w in inter.neighbors(u):
+#                 if w not in visited:
+#                     visited.add(w)
+#                     new.add(w)
+#         frontier = new
 
-    if len(visited) < 3:
-        return 0.0
+#     if len(visited) < 3:
+#         return 0.0
 
-    # 2. Induce subgraph
-    sub_vertices = {vid: H.vertices[vid] for vid in visited if vid in H.vertices}
-    sub_inter = inter.subgraph(visited)
+#     # 2. Induce subgraph
+#     sub_vertices = {vid: H.vertices[vid] for vid in visited if vid in H.vertices}
+#     sub_inter = inter.subgraph(visited)
 
-    # 3. Measure hierarchy locally
-    return hierarchical_closure(
-        H.from_subgraph(sub_vertices, sub_inter),
-        sub_inter
-    )
+#     # 3. Measure hierarchy locally
+#     return hierarchical_closure(
+#         H.from_subgraph(sub_vertices, sub_inter),
+#         sub_inter
+#     )
      
 def local_omega(H, inter, v):
     """

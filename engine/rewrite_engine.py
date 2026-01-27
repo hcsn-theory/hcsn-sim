@@ -95,6 +95,7 @@ class RewriteEngine:
     # Main step
     # --------------------------------------------------
     def step(self):
+        self.time += 1
         _t0 = time.perf_counter()
         self.prev_xi = dict(self.xi)
 
@@ -172,7 +173,7 @@ class RewriteEngine:
             xi_clusters = self.xi_clusters(inter_after)
             self._propagate_xi(inter_after, xi_clusters)
             
-
+            geom_inter = self.full_interaction_graph()
             # -----------------------------
             # Geometry updates - matter defined
             # -----------------------------
@@ -184,41 +185,19 @@ class RewriteEngine:
                 }
                 
                 if len(xi_support) >= 2:
-                    # --- topo geometry restricted to xi_support ---
-                    topo = self.topo_clusters(inter_after)
-                    
-                    # group xi_support by topo component
-                    topo_with_xi = defaultdict(list)
-                    for v in xi_support:
-                        topo_cid = topo.get(v)
-                        if topo_cid is not None:
-                            topo_with_xi[topo_cid].append(v)
-                    
-                    # update geometry inside each topo component
-                    for _, verts in topo_with_xi.items():
-                        if len(verts) < 2:
-                            continue
-                        
-                        self._update_topo_distance_memory(
-                            inter_after,
-                            restrict_to=verts
-                        )
-
-                    # --- ξ geometry ---
-                    if len(set(self.xi_clusters(inter_after).values())) >= 2:
-                        self._update_xi_distance_memory(inter_after)
-
+                    xi_geom_clusters = self.xi_clusters(geom_inter)
+                    if len(set(xi_geom_clusters.values())) >= 2:
+                        self._update_xi_distance_memory(geom_inter)
             # -----------------------------
             # Logs
             # -----------------------------
             self._record_rewrite(undo)
-            self._record_xi_current(inter_after)
+            self._record_xi_current(geom_inter)
 
         # ---------------------------------
         # Timing + diagnostics
         # ---------------------------------
         self._last_step_time = time.perf_counter() - _t0
-        self.time += 1
         
         if self.verbose and self.time % self.print_interval == 0:
             xi_count = sum(1 for x in self.xi.values() if x > self.xi_threshold)
@@ -273,7 +252,7 @@ class RewriteEngine:
                 if cid_u is not None and cid_v is not None and cid_u != cid_v:
                     continue
 
-                new_xi[u] = new_xi.get(u, 0.0) + 0.5 * xi_v / deg
+                new_xi[u] = new_xi.get(u, 0.0) + 0.25 * xi_v / deg
 
             new_xi[v] = new_xi.get(v, 0.0) + 0.5 * xi_v
             
@@ -359,7 +338,7 @@ class RewriteEngine:
                 topo_groups[cid].append(v)
         
         topo_ids = list(topo_groups.keys())
-        if len(topo_ids) < 2:
+        if not topo_ids:
             return
 
         for i in range(len(topo_ids)):
@@ -372,6 +351,10 @@ class RewriteEngine:
                     for v in A
                 )
                 if not math.isfinite(d):
+                    if self.verbose:
+                        print(
+                            f"[geom-skip] infinite distance skipped "
+                        )
                     continue
 
                 key = ("topo", topo_ids[i], topo_ids[j])
@@ -386,53 +369,43 @@ class RewriteEngine:
     # --------------------------------------------------
     def _update_xi_distance_memory(self, inter):
         """
-        OPTION 1:
-        ξ-geometry only exists when ξ clusters
-        live inside the SAME topo component.
+        ξ-geometry on full interaction graph.
+        No topo restriction.
         """
 
-        topo = self.topo_clusters(inter)
         xi_clusters = self.xi_clusters(inter)
 
-        # (topo_component, xi_cluster) → vertices
-        bucket = defaultdict(list)
+        cluster_to_vertices = defaultdict(list)
+        for v, cid in xi_clusters.items():
+            cluster_to_vertices[cid].append(v)
 
-        for v, xi_cid in xi_clusters.items():
-            topo_cid = topo.get(v)
-            if topo_cid is None:
-                continue
-            bucket[(topo_cid, xi_cid)].append(v)
+        cluster_ids = list(cluster_to_vertices.keys())
+        if len(cluster_ids) < 2:
+            return
 
-        # group by topo component
-        topo_groups = defaultdict(dict)
-        for (topo_cid, xi_cid), verts in bucket.items():
-            topo_groups[topo_cid][xi_cid] = verts
+        for i in range(len(cluster_ids)):
+            for j in range(i + 1, len(cluster_ids)):
+                A = cluster_to_vertices[cluster_ids[i]]
+                B = set(cluster_to_vertices[cluster_ids[j]])
 
-        # compute geometry ONLY inside same topo component
-        for topo_cid, xi_groups in topo_groups.items():
-            xi_ids = list(xi_groups.keys())
-            if len(xi_ids) < 2:
-                continue
+                d = min(
+                    self.graph_distance(inter, v, B, max_depth=8)
+                    for v in A
+                )
 
-            for i in range(len(xi_ids)):
-                for j in range(i + 1, len(xi_ids)):
-                    A = xi_groups[xi_ids[i]]
-                    B = set(xi_groups[xi_ids[j]])
+                if not math.isfinite(d):
+                    continue
 
-                    d = min(
-                        self.graph_distance(inter, v, B, max_depth=6)
-                        for v in A
-                    )
+                key = ("xi", cluster_ids[i], cluster_ids[j])
+                prev = self.xi_distance_memory.get(key, d)
+                self.xi_distance_memory[key] = (
+                    self.DISTANCE_MEMORY_DECAY * prev
+                    + (1 - self.DISTANCE_MEMORY_DECAY) * d
+                )
 
-                    if not math.isfinite(d):
-                        continue
-
-                    key = ("xi", xi_ids[i], xi_ids[j])
-                    prev = self.xi_distance_memory.get(key, d)
-
-                    self.xi_distance_memory[key] = (
-                        self.DISTANCE_MEMORY_DECAY * prev
-                        + (1 - self.DISTANCE_MEMORY_DECAY) * d
+                if self.verbose:
+                    print(
+                        f"[geom-add] xi_pair ({cluster_ids[i]}, {cluster_ids[j]}) d={d}"
                     )
     # --------------------------------------------------
     # ξ-current logging
@@ -462,6 +435,23 @@ class RewriteEngine:
             self.last_rewrite["added_vertices"]
             + self.last_rewrite["removed_vertices"]
         )
+        
+    def full_interaction_graph(self):
+        """
+        Geometry-only interaction graph.
+        Uses ALL hyperedges, no depth filtering.
+        """
+        from collections import defaultdict
+        inter = defaultdict(set)
+
+        for edge in self.H.hyperedges.values():
+            ids = [v.id for v in edge.vertices]
+            for i in ids:
+                for j in ids:
+                    if i != j:
+                        inter[i].add(j)
+
+        return inter
 
     def graph_distance(self, inter, start, targets, max_depth=50):
         if start in targets:

@@ -168,19 +168,25 @@ for _ in range(INTERACTION_STEPS):
     # ---------------------------
     t2 = time.perf_counter()
     interaction_log.append({
-        "time": engine.time,
-        "rewrite_accepted": accepted,
-
-        # ξ geometry
-        "xi_support": xi_support,
-        "xi_num_clusters": len(xi_cluster_sizes),
-        "xi_cluster_sizes": xi_cluster_sizes,
-
-        "topo_geometry": topo_geometry,
-        "xi_geometry": xi_geometry,
-        
-        "Omega": getattr(engine, "_cached_omega", None),  # 🔧 reuse cached omega if available
-        "interaction_graph_size": len(inter),
+        "t": engine.time,
+        "Ω": round(float(getattr(engine, "_cached_omega", 0.0)), 6),
+    
+        "xi": {
+            "count": sum(1 for x in engine.xi.values() if x > engine.xi_threshold),
+            "clusters": len(xi_cluster_sizes),
+            "largest_cluster": max(xi_cluster_sizes.values(), default=0),
+        },
+    
+        "geometry": {
+            "topo_pairs": len(engine.topo_distance_memory),
+            "xi_pairs": len(engine.xi_distance_memory),
+        },
+    
+        "graph": {
+            "vertices": len(engine.H.vertices),
+            "hyperedges": len(engine.H.hyperedges),
+            "interaction_nodes": len(inter),
+        }
     })
     t3 = time.perf_counter()
     if engine.time % 100 == 0:
