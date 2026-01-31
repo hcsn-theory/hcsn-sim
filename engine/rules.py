@@ -3,8 +3,8 @@
 import random
 
 
-def edge_creation_rule(H, anchor_vertex=None):
-
+def edge_creation_rule(H, anchor_vertex=None, p_rule=0.03):
+    
     if not H.hyperedges:
         return None
 
@@ -24,6 +24,23 @@ def edge_creation_rule(H, anchor_vertex=None):
         if not candidates:
             return None
         edge = random.choice(candidates)
+        
+    # --------------------------------------------------
+    # LOOP CLOSURE (CRITICAL FOR GEOMETRY)
+    # --------------------------------------------------
+    # With small probability, connect existing vertices
+    # instead of creating a new one (breaks tree structure)
+    if random.random() < p_rule and len(H.vertices) >= 3:
+        u, v = random.sample(list(H.vertices.values()), 2)
+        
+        if v.id not in H.causal_order[u.id]:
+            H.add_causal_relation(u, v)
+            
+            e = H.add_hyperedge([u, v])
+
+            undo["added_edges"].append(e.id)
+            undo["added_causal"].append((u.id, v.id))
+            
 
     new_vertex = H.add_vertex()
     undo["added_vertices"].append(new_vertex.id)

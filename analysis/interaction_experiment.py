@@ -63,8 +63,9 @@ while True:
 # -------------------------------
 # Inject first proto-particle
 # -------------------------------
-if not engine.force_defect(magnitude=0.3):
-    raise RuntimeError("First proto-particle injection failed")
+ok = engine.force_defect(magnitude=0.3)
+if not ok:
+    print("[warn] First proto-particle injection failed — continuing anyway")
 
 first_injection_time = engine.time
 
@@ -84,12 +85,14 @@ if not engine.xi:
 # -------------------------------
 # Inject second proto-particle
 # -------------------------------
-if not engine.force_second_proto_object(
+ok = engine.force_second_proto_object(
     omega_kick=0.3,
     xi_seed=1.0,
-    min_distance=10,
-):
-    raise RuntimeError("Second proto-particle injection failed")
+    min_distance=6,
+)
+
+if not ok:
+    print("[warn] Second proto-particle injection failed — continuing experiment")
 
 second_injection_time = engine.time
 

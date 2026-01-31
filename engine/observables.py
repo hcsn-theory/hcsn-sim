@@ -99,7 +99,7 @@ def interaction_concentration(interactions):
         return 0.0
     return max(degrees) / sum(degrees)
 
-def worldline_interaction_graph(H, fraction=0.6):
+def worldline_interaction_graph(H, fraction=0.0):
     """
     Build interaction graph among deep worldlines.
     """

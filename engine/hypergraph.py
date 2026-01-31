@@ -70,11 +70,10 @@ class Hypergraph:
         """
         Add causal relation u → v and update worldline depth.
         """
-        if v.id not in self.causal_order[u.id]:
-            self.causal_order[u.id].add(v.id)
+        self.causal_order[u.id].add(v.id)
 
-            # Worldline inertia: propagate depth
-            v.depth = max(v.depth, u.depth + 1)
+        # Worldline inertia: propagate depth
+        v.depth = max(v.depth, u.depth + 1)
 
     def is_causally_related(self, u, v):
         return v.id in self.causal_order[u.id]

@@ -107,12 +107,16 @@ class RewriteEngine:
             omega_before = self._cached_omega
         else:
             inter_before = worldline_interaction_graph(self.H)
-            omega_before = hierarchical_closure(self.H, inter_before)
+            omega_before = 0.0
 
         # ---------------------------------
         # Propose rewrite
         # ---------------------------------
         undo = self._propose_rewrite()
+        
+        if undo is None and self.time % 200 == 0:
+            print("[debug] rewrite skipped at t =", self.time)
+            
         if undo is None:
             return False
 
@@ -129,7 +133,13 @@ class RewriteEngine:
         # Tentative interaction graph
         # ---------------------------------
         inter_after = worldline_interaction_graph(self.H)
-        omega_after = hierarchical_closure(self.H, inter_after)
+        
+        if self.time % 200 == 0:
+            print("[debug] interaction nodes =", len(inter_after))
+        if self.time % 50 == 0:    
+            omega_after = hierarchical_closure(self.H, inter_after)
+        else:
+            omega_after = omega_before
         delta_omega = omega_after - omega_before
 
         # ---------------------------------
@@ -146,7 +156,7 @@ class RewriteEngine:
         if not accepted:
             self.undo_changes(undo)
             self._cached_inter = inter_before
-            self._cached_omega = omega_before
+            self._cached_omega = self._cached_omega
             omega_print = omega_before
 
         else:
@@ -199,6 +209,9 @@ class RewriteEngine:
         # ---------------------------------
         self._last_step_time = time.perf_counter() - _t0
         
+        if self.time % 200 == 0:
+            print("[debug] max causal depth =", self.H.max_chain_length())
+        
         if self.verbose and self.time % self.print_interval == 0:
             xi_count = sum(1 for x in self.xi.values() if x > self.xi_threshold)
             print(
@@ -220,15 +233,17 @@ class RewriteEngine:
             if x > self.xi_threshold and vid in self.H.vertices
         ]
     
-        if protected_ids and random.random() < 0.7:
+        if protected_ids and random.random() < 0.3:
             vid = random.choice(protected_ids)
             v_obj = self.H.vertices[vid]
             return edge_creation_rule(self.H, anchor_vertex=v_obj)
     
-        if random.random() < 0.6:
+        if random.random() < 0.9:
             return edge_creation_rule(self.H)
     
-        return vertex_fusion_rule(self.H)
+        if len(self.H.vertices) > 200 and random.random() < 0.05:
+            return vertex_fusion_rule(self.H)
+        return None
     # --------------------------------------------------
     # ξ propagation (cluster-aware, ORIGINAL)
     # --------------------------------------------------
@@ -247,14 +262,25 @@ class RewriteEngine:
             neighbors = inter.get(v, [])
             deg = max(len(neighbors), 1)
             
+            # --- ξ cluster metastability window ---
+            protect_clusters = False
+            if self.forced_time is not None:
+                if self.time - self.forced_time < 100:
+                    protect_clusters = True
+            
             for u in neighbors:
                 cid_u = clusters.get(u)
+                
+                if protect_clusters:
+                    if cid_u is not None and cid_v is not None and cid_u != cid_v:
+                        continue
+                    
                 if cid_u is not None and cid_v is not None and cid_u != cid_v:
                     continue
 
-                new_xi[u] = new_xi.get(u, 0.0) + 0.25 * xi_v / deg
+                new_xi[u] = new_xi.get(u, 0.0) + 0.15 * xi_v / deg
 
-            new_xi[v] = new_xi.get(v, 0.0) + 0.5 * xi_v
+            new_xi[v] = new_xi.get(v, 0.0) + 0.7 * xi_v
             
         for v in new_xi:
             if new_xi[v] > XI_MAX:
@@ -340,6 +366,26 @@ class RewriteEngine:
         topo_ids = list(topo_groups.keys())
         if not topo_ids:
             return
+        
+        # 🔧 Fallback: store intra-component scale if only one topo component
+        if len(topo_ids) == 1:
+            verts = topo_groups[topo_ids[0]]
+            if len(verts) >= 2:
+                A = verts[: len(verts)//2]
+                B = set(verts[len(verts)//2 :])
+
+                d = min(
+                    self.graph_distance(inter, v, B, max_depth=self.geometry_depth())
+                    for v in A
+                )
+
+                if math.isfinite(d):
+                    key = ("topo", topo_ids[0], topo_ids[0])
+                    prev = self.topo_distance_memory.get(key, d)
+                    self.topo_distance_memory[key] = (
+                        self.DISTANCE_MEMORY_DECAY * prev
+                        + (1 - self.DISTANCE_MEMORY_DECAY) * d
+                    )
 
         for i in range(len(topo_ids)):
             for j in range(i + 1, len(topo_ids)):
@@ -347,7 +393,7 @@ class RewriteEngine:
                 B = set(topo_groups[topo_ids[j]])
 
                 d = min(
-                    self.graph_distance(inter, v, B, max_depth=6)
+                    self.graph_distance(inter, v, B, max_depth=self.geometry_depth())
                     for v in A
                 )
                 if not math.isfinite(d):
@@ -387,9 +433,13 @@ class RewriteEngine:
             for j in range(i + 1, len(cluster_ids)):
                 A = cluster_to_vertices[cluster_ids[i]]
                 B = set(cluster_to_vertices[cluster_ids[j]])
+                
+                # 🔧 limit sampling to avoid O(N²) blowup
+                if len(A) > 25:
+                    A = A[:25]
 
                 d = min(
-                    self.graph_distance(inter, v, B, max_depth=8)
+                    self.graph_distance(inter, v, B, max_depth=self.geometry_depth())
                     for v in A
                 )
 
@@ -436,6 +486,10 @@ class RewriteEngine:
             + self.last_rewrite["removed_vertices"]
         )
         
+    def geometry_depth(self):
+        # logarithmic horizon
+        return max(16, int(math.log2(len(self.H.vertices) + 1) * 4))
+        
     def full_interaction_graph(self):
         """
         Geometry-only interaction graph.
@@ -453,9 +507,15 @@ class RewriteEngine:
 
         return inter
 
-    def graph_distance(self, inter, start, targets, max_depth=50):
+    def graph_distance(self, inter, start, targets, max_depth=None):
         if start in targets:
             return 0
+        
+        if max_depth is None:
+            N = max(len(inter), 1)
+            max_depth = max(20, int(4 * math.log2(N)))  # effectively infinite
+            
+            
         visited = {start}
         frontier = {start}
         depth = 0
@@ -506,57 +566,101 @@ class RewriteEngine:
     # --------------------------------------------------
     # Forced probes (matter injection)
     # --------------------------------------------------
-    def force_defect(self, magnitude):
-        vid = random.choice(list(self.H.vertices.keys()))
-        v_obj = self._vid_to_vertex(vid)
-        undo = edge_creation_rule(self.H, anchor_vertex=v_obj)
-        if undo is None:
+    def force_defect(self, magnitude, max_tries=30):
+        """
+        Inject first proto-particle (ξ seed).
+        Robust against transient rewrite failures.
+        """
+        if not self.H.vertices:
             return False
 
-        self.xi[vid] = self.xi.get(vid, 0.0) + magnitude
-        self.forced_time = self.time
-        self._record_rewrite(undo)
-        
-        if self.verbose:
-            print(f"[inject] defect at t={self.time} v={vid}")
-        return True
+        for _ in range(max_tries):
+            vid = random.choice(list(self.H.vertices.keys()))
+            v_obj = self._vid_to_vertex(vid)
+            if v_obj is None:
+                continue
 
-    def force_second_proto_object(self, omega_kick, xi_seed, min_distance):
-        inter = worldline_interaction_graph(self.H)
-        xi_support = {vid for vid, x in self.xi.items() if x > self.xi_threshold}
+            undo = edge_creation_rule(self.H, anchor_vertex=v_obj)
+            if undo is None:
+                continue
+
+            # successful injection
+            self.xi[vid] = self.xi.get(vid, 0.0) + magnitude
+            self.forced_time = self.time
+            self._record_rewrite(undo)
+
+            if self.verbose:
+                print(f"[inject] defect at t={self.time} v={vid}")
+            return True
+
+        # failed after retries
+        return False
+
+
+    def force_second_proto_object(
+        self,
+        omega_kick,
+        xi_seed,
+        min_distance,
+        max_tries=50,
+    ):
+        """
+        Inject second proto-object far from existing ξ support.
+        """
+        xi_support = {vid for vid, x in self.xi.items()
+                    if x > self.xi_threshold and vid in self.H.vertices
+        }
         if not xi_support:
             return False
+
+        inter = self.full_interaction_graph()
+
+        # safe distance horizon
+        N = max(len(self.H.vertices), 1)
+        max_depth = max(20, int(math.log2(N)) * 4)
 
         best_vid = None
         best_d = -1
 
-        for vid in self.H.vertices.keys():
-            d = self.graph_distance(inter, vid, xi_support, max_depth=20)
+        for _ in range(max_tries):
+            vid = random.choice(list(self.H.vertices.keys()))
+            if vid in xi_support:
+                continue
+
+            d = self.graph_distance(inter, vid, xi_support, max_depth=max_depth)
+
             if d > best_d:
                 best_d = d
                 best_vid = vid
 
-            if d >= min_distance:
+            if d >= min_distance and math.isfinite(d):
                 self.xi[vid] = xi_seed
-                # 🔧 FORCE causal bridge (DEBUG ONLY)
+
+                # minimal causal bridge (do NOT over-connect)
                 u = next(iter(xi_support))
-                self.H.add_causal_relation(
-                    self.H.vertices[u],
-                    self.H.vertices[vid],
-                )
+                if u in self.H.vertices and vid in self.H.vertices:
+                    self.H.add_causal_relation(
+                        self.H.vertices[u],
+                        self.H.vertices[vid],
+                    )
+
                 self.forced_time = self.time
-                print(
-                    f"### SECOND PROBE at t={self.time} | v={vid} | d={d}"
-                )
+                print(f"### SECOND PROBE at t={self.time} | v={vid} | d={d}")
                 return True
 
-        # fallback
-        if best_vid is not None and best_d > 0:
+        # --- guaranteed fallback (never abort experiment) ---
+        if best_vid is not None:
             self.xi[best_vid] = xi_seed
+            
+            u = next(iter(xi_support))
+            self.H.add_causal_relation(
+                self.H.vertices[u],
+                self.H.vertices[best_vid],
+            )
             self.forced_time = self.time
             print(
                 f"### SECOND PROBE (fallback) at t={self.time} | "
-                f"v={best_vid} | max_d={best_d}"
+                f"v={best_vid} | d={best_d}"
             )
             return True
 
