@@ -1,16 +1,13 @@
-# 🌀 HCSN Theory — Holographic Computational Spin-Networks
+# 🌀 HCSN Theory — Hierarchial Closure Structure Network
 
 
 [![DOI](https://zenodo.org/badge/1118466950.svg)](https://doi.org/10.5281/zenodo.18025757)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0004--1698--5729-green.svg)](https://orcid.org/0009-0004-1698-5729)
 
-
-A computational approach to emergent spacetime, gravity, and quantum mechanics.
-
 ---
 
-> HCSN (Holographic Computational Spin-Network) explores the hypothesis that the universe is fundamentally computational — discrete events and causal relations give rise to spacetime, gravity, and quantum features.
+> HCSN (Hierarchial Closure Structure Network) explores the hypothesis that the universe is fundamentally computational — discrete events and causal relations .
 
 ✨ Highlights
 - Minimal, local rewrite rules drive evolution.
@@ -21,13 +18,10 @@ A computational approach to emergent spacetime, gravity, and quantum mechanics.
 
 Table of Contents
 - [Overview](#overview)
-- [Docs](#docs)
-- [Axioms](#axioms)
 - [Repository Structure](#repository-structure)
 - [Quick Start](#quick-start)
-- [How to Run a Toy Universe](#how-to-run-a-toy-universe)
+- [How to Run](#how-to-run-a-toy-universe)
 - [Diagnostics Explained](#diagnostics-explained)
-- [Stable Spacetime-like Behavior](#stable-spacetime-like-behavior)
 - [Current Research Focus](#current-research-focus)
 - [Contributing](#contributing)
 - [Acknowledgements & License](#acknowledgements)
@@ -49,27 +43,6 @@ The long-term goal is to identify the minimal rule set that produces universes c
 
 ---
 
-## Docs
-
-This is full Documentation of this theory.
-[Click here to read the Documentation](docs/HCSN-Theory.md)
-
----
-
-
-## Axioms
-
-| Axiom | Name | Summary |
-|---:|---|---|
-| 1 | Discreteness | Reality is discrete — events (vertices) are fundamental. |
-| 2 | Causality | Events are partially ordered by causal relations. |
-| 3 | Minimal Dynamics | Local rewrite rules drive evolution: Edge Creation & Vertex Fusion. |
-| 4 | Holography | Information capacity scales with boundary (not volume). |
-| 5 | Geometricity | Stable geometry emerges when ⟨k⟩ ≈ 8 (a dimensional attractor). |
-| 6 | Persistence | Hierarchical stability & error-correction via redundant causal loops. |
-
----
-
 ## Repository Structure 
 
 ```text
@@ -79,14 +52,11 @@ HCSN-Theory/
 │   ├── rules.py           # Rewrite rules
 │   ├── rewrite_engine.py  # Acceptance dynamics
 │   └── observables.py     # Physical diagnostics
-├── experiments/           # Reproducible experiments
-│   ├── exp_phase_diagram.py
-│   ├── exp_critical_scan.py
-│   └── exp_worldline_interactions.py
-├── notebooks/             # Visualization & exploration (Jupyter)
+├── sim-exp/           # Reproducible experiments
 ├── figures/               # Generated plots & assets
-├── theory/                # Conceptual documentation
-│   └── hcsn_summary.md
+├── analysis/
+├── multiverse/
+├── simulation.log
 └── README.md
 ```
 
@@ -100,28 +70,26 @@ Requirements
 
 Clone and run:
 ```bash
-git clone https://github.com/hcsn-theory/HCSN-Theory.git
-cd HCSN-Theory
-python3 run_simulation.py
+git clone https://github.com/hcsn-theory/hcsn-sim.git
+cd hcsn-sim
+python3 -m analysis.interaction_experiment
 ```
 
-This runs a toy universe and prints diagnostics every N steps (see config/flags in the engine if present).
+This runs a universe and prints diagnostics every N steps (see config/flags in the engine if present).
 
 ---
 
-## How to Run a Toy Universe 
+## How to Run
 
 1. Configure parameters (if available) in `engine` or via command-line flags.
 2. Start the simulation:
-   - `python3 run_simulation.py`
+   - `python3 -m analysis.interaction_experiment`
 3. Key printed diagnostics (periodic):
    - average coordination ⟨k⟩
    - causal depth (L)
    - interaction concentration (Φ)
    - closure density (Ψ)
    - hierarchical stability (Ω)
-
-Tip: Increase logging or enable snapshotting in `rewrite_engine.py` for analysis and visualization.
 
 ---
 
@@ -139,18 +107,6 @@ Interpretation guide:
 - ⟨k⟩ ≈ 7.5–8.5 → spacetime-like, stable geometry.
 - Small Φ → suppressed hubs, more uniform interactions.
 - Non-zero Ω across scales → hierarchical persistence and robustness.
-
----
-
-## Stable Spacetime-Like Behavior 
-
-Empirical indicators in simulations:
-- ⟨k⟩ stabilizes near 7.5–8.5
-- Φ remains small (no runaway hub formation)
-- Ω > 0 across multiple scales
-- Closure density Ψ indicates sufficient redundancy for persistent structure
-
-Negative results (failures) are equally valuable — they highlight missing axioms or rule constraints.
 
 ---
 
@@ -183,12 +139,6 @@ Guidelines:
 - Write reproducible code and seed RNGs where appropriate.
 - Add tests or small example scripts demonstrating changes.
 - Keep changes modular — new rules or observables should live in `engine/`.
-
----
-
-## Examples & Notebooks 
-
-See `notebooks/` for visualization experiments and step-by-step explorations. If a plotting stack is available, export snapshots to `figures/` for inclusion in reports.
 
 ---
 
