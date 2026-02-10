@@ -14,7 +14,8 @@ from engine.observables import (
 # -------------------------------
 # Experiment parameters
 # -------------------------------
-STABILIZE_STEPS = 600
+STABILIZE_STEPS_BEFORE_PROBE = 150
+STABILIZE_STEPS_AFTER_PROBE = 300
 INTERACTION_STEPS = 1500
 OMEGA_TARGET = 1.10
 OMEGA_TOL = 0.05
@@ -28,8 +29,8 @@ MIN_CLUSTER_COUNT = 2
 GEOMETRY_START_DELAY = 50
 
 # 🔧 ADDITION (observer throttle only)
-GEOMETRY_STRIDE = 5        # compute geometry every N steps
-MAX_BFS_DEPTH = 12         # cap physical distance search
+GEOMETRY_STRIDE = 5       # compute geometry every N steps
+MAX_BFS_DEPTH = 32         # cap physical distance search
 
 
 # -------------------------------
@@ -69,7 +70,7 @@ if not ok:
 
 first_injection_time = engine.time
 
-for _ in range(STABILIZE_STEPS):
+for _ in range(STABILIZE_STEPS_BEFORE_PROBE):
     engine.step()
 
 
@@ -128,16 +129,10 @@ for _ in range(INTERACTION_STEPS):
         if x > engine.xi_threshold and math.isfinite(x)
     )
 
-    # ξ support
-    if engine.time % GEOMETRY_STRIDE == 0:
-        
-        xi_support = {
-            int(v): float(x)
-            for v, x in engine.xi.items()
-            if x > engine.xi_threshold and math.isfinite(x)
-        }
-    else:
-        xi_support = {}
+    xi_support = {
+        v for v, x in engine.xi.items()
+        if x > engine.xi_threshold and math.isfinite(x)
+    }
     # --------------------------------
     # Read geometry from engine (OPTION B)
     # --------------------------------

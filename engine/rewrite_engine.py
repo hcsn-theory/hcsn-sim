@@ -156,7 +156,7 @@ class RewriteEngine:
         if not accepted:
             self.undo_changes(undo)
             self._cached_inter = inter_before
-            self._cached_omega = self._cached_omega
+            self._cached_omega = omega_before
             omega_print = omega_before
 
         else:
@@ -183,7 +183,22 @@ class RewriteEngine:
             xi_clusters = self.xi_clusters(inter_after)
             self._propagate_xi(inter_after, xi_clusters)
             
-            geom_inter = self.full_interaction_graph()
+            geom_inter = inter_after
+            
+            # --------------------------------------------------
+            # Deferred causal bridge (SECOND PROBE FIX)
+            # --------------------------------------------------
+            if hasattr(self, "pending_bridge"):
+                # allow geometry to measure separation first
+                if self.time - self.pending_bridge_time >= 20:
+                    u, v = self.pending_bridge
+                    if u in self.H.vertices and v in self.H.vertices:
+                        self.H.add_causal_relation(
+                            self.H.vertices[u],
+                            self.H.vertices[v]
+                        )
+                    del self.pending_bridge
+                    del self.pending_bridge_time
             # -----------------------------
             # Geometry updates - matter defined
             # -----------------------------
@@ -263,25 +278,24 @@ class RewriteEngine:
             deg = max(len(neighbors), 1)
             
             # --- ξ cluster metastability window ---
-            protect_clusters = False
-            if self.forced_time is not None:
-                if self.time - self.forced_time < 100:
-                    protect_clusters = True
-            
+            protect_clusters = (
+                self.forced_time is not None
+                and self.time - self.forced_time < 100
+            )
+
             for u in neighbors:
                 cid_u = clusters.get(u)
-                
+
+                # block inter-cluster flow only during protection window
                 if protect_clusters:
                     if cid_u is not None and cid_v is not None and cid_u != cid_v:
                         continue
                     
-                if cid_u is not None and cid_v is not None and cid_u != cid_v:
-                    continue
-
                 new_xi[u] = new_xi.get(u, 0.0) + 0.15 * xi_v / deg
 
             new_xi[v] = new_xi.get(v, 0.0) + 0.7 * xi_v
             
+
         for v in new_xi:
             if new_xi[v] > XI_MAX:
                 new_xi[v] = XI_MAX
@@ -500,10 +514,12 @@ class RewriteEngine:
 
         for edge in self.H.hyperedges.values():
             ids = [v.id for v in edge.vertices]
-            for i in ids:
-                for j in ids:
-                    if i != j:
-                        inter[i].add(j)
+            if len(ids) < 2:
+                continue
+            for i in range(len(ids)):
+                a, b = ids[i], ids[i]
+                inter[a].add(b)
+                inter[b].add(a)
 
         return inter
 
@@ -613,7 +629,7 @@ class RewriteEngine:
         if not xi_support:
             return False
 
-        inter = self.full_interaction_graph()
+        inter = worldline_interaction_graph(self.H, fraction=0.0)
 
         # safe distance horizon
         N = max(len(self.H.vertices), 1)
@@ -638,12 +654,7 @@ class RewriteEngine:
 
                 # minimal causal bridge (do NOT over-connect)
                 u = next(iter(xi_support))
-                if u in self.H.vertices and vid in self.H.vertices:
-                    self.H.add_causal_relation(
-                        self.H.vertices[u],
-                        self.H.vertices[vid],
-                    )
-
+                
                 self.forced_time = self.time
                 print(f"### SECOND PROBE at t={self.time} | v={vid} | d={d}")
                 return True
@@ -653,10 +664,8 @@ class RewriteEngine:
             self.xi[best_vid] = xi_seed
             
             u = next(iter(xi_support))
-            self.H.add_causal_relation(
-                self.H.vertices[u],
-                self.H.vertices[best_vid],
-            )
+            self.pending_bridge = (u, best_vid)
+            self.pending_bridge_time = self.time
             self.forced_time = self.time
             print(
                 f"### SECOND PROBE (fallback) at t={self.time} | "
