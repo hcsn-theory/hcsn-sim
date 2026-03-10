@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HCSN Live Visualizer</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg:        #000000;
+    --amber:     #FF9500;
+    --amber-dim: rgba(255,149,0,0.15);
+    --magenta:   #FF00AA;
+    --cyan:      #00d4ff;
+    --cyan-dim:  rgba(0,212,255,0.12);
+    --yellow:    #FFE600;
+    --green:     #00ffb2;
+    --warn:      #ffcc00;
+    --text:      #8ab8cc;
+    --text-hi:   #d0eeff;
+    --border:    rgba(0,180,255,0.12);
+    --panel-bg:  rgba(0,2,8,0.92);
+    --font:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+  }
+
+  #cvs { display: block; position: fixed; inset: 0; }
+
+  .panel {
+    position: fixed;
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 14px 16px;
+    pointer-events: all;
+  }
+
+  .panel-label {
+    font-size: 9px;
+    letter-spacing: .18em;
+    color: rgba(0,180,255,.35);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 10px 0; }
+
+  .mrow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 5px 0;
+    gap: 12px;
+  }
+  .mkey { font-size: 10px; color: rgba(138,184,204,.45); white-space: nowrap; }
+  .mval { font-size: 12px; font-weight: 700; color: var(--text-hi); }
+  .mval.live    { color: var(--cyan); }
+  .mval.amber   { color: var(--amber); }
+  .mval.magenta { color: var(--magenta); }
+
+  #p-info { top: 18px; left: 18px; min-width: 228px; }
+  #p-info .brand {
+    font-size: 24px; font-weight: 900;
+    letter-spacing: .1em; color: var(--amber); line-height: 1;
+    text-shadow: 0 0 20px rgba(255,149,0,0.5);
+  }
+  #p-info .brand-sub {
+    font-size: 9px; color: rgba(255,149,0,.3);
+    letter-spacing: .14em; margin-top: 3px;
+  }
+
+  .status-row { display: flex; align-items: center; gap: 7px; }
+  #dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #ff3a3a; transition: background .3s; flex-shrink: 0;
+  }
+  #dot.live {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 2.4s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  #p-chart { top: 18px; right: 18px; width: 260px; }
+  .chart-canvas { width: 100%; display: block; margin-top: 6px; image-rendering: pixelated; }
+
+  #p-legend { bottom: 60px; left: 18px; min-width: 200px; }
+  .lrow { display: flex; align-items: center; gap: 9px; margin: 5px 0; font-size: 10px; color: var(--text); }
+  .ldot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .lline { width: 22px; height: 3px; flex-shrink: 0; border-radius: 2px; }
+
+  #p-ctrl {
+    bottom: 18px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 16px; white-space: nowrap;
+  }
+
+  .btn {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 10px; letter-spacing: .12em;
+    padding: 6px 13px; cursor: pointer;
+    text-transform: uppercase; transition: all .15s;
+    outline: none; -webkit-appearance: none;
+  }
+  .btn:hover { background: var(--amber-dim); border-color: rgba(255,149,0,.5); color: var(--amber); }
+  .btn.on    { background: rgba(255,149,0,.1); border-color: var(--amber); color: var(--amber); }
+
+  .sep { width: 1px; height: 20px; background: var(--border); }
+  .slabel { font-size: 10px; color: rgba(138,184,204,.45); letter-spacing: .1em; text-transform: uppercase; }
+  input[type=range] { width: 80px; accent-color: var(--amber); cursor: pointer; }
+
+  #overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.97);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 200; transition: opacity .6s;
+  }
+  #overlay.gone { opacity: 0; pointer-events: none; }
+  .ov-title {
+    font-size: 44px; font-weight: 900; color: var(--amber);
+    letter-spacing: .12em; margin-bottom: 6px;
+    text-shadow: 0 0 40px rgba(255,149,0,0.6);
+  }
+  .ov-sub { font-size: 11px; color: rgba(255,149,0,.25); letter-spacing: .2em; margin-bottom: 52px; }
+  .ring {
+    width: 44px; height: 44px;
+    border: 2px solid rgba(255,149,0,.12);
+    border-top-color: var(--amber); border-radius: 50%;
+    animation: spin 1s linear infinite; margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ov-status { font-size: 11px; color: rgba(138,184,204,.35); letter-spacing: .14em; }
+</style>
+</head>
+<body>
+
+<canvas id="cvs"></canvas>
+
+<div id="overlay">
+  <div class="ov-title">HCSN</div>
+  <div class="ov-sub">HIERARCHICAL CLOSURE STRUCTURE NETWORK</div>
+  <div class="ring"></div>
+  <div class="ov-status" id="ov-txt">CONNECTING TO SIMULATION ENGINE...</div>
+</div>
+
+<div class="panel" id="p-info">
+  <div class="brand">HCSN</div>
+  <div class="brand-sub">LIVE SIMULATION VIEWER</div>
+  <div class="divider"></div>
+  <div class="mrow"><span class="mkey">STATUS</span>
+    <span class="status-row"><span id="dot"></span><span class="mval" id="m-status">OFFLINE</span></span>
+  </div>
+  <div class="mrow"><span class="mkey">PHASE</span>          <span class="mval" id="m-phase" style="font-size:9px;color:#ffcc00">—</span></div>
+  <div class="mrow"><span class="mkey">STEP (t)</span>        <span class="mval live"    id="m-t">—</span></div>
+  <div class="mrow"><span class="mkey">VERTICES</span>         <span class="mval"         id="m-v">—</span></div>
+  <div class="mrow"><span class="mkey">HYPEREDGES</span>       <span class="mval"         id="m-e">—</span></div>
+  <div class="mrow"><span class="mkey">Ω  hier.closure</span> <span class="mval live"    id="m-om">—</span></div>
+  <div class="mrow"><span class="mkey">|ξ|  active</span>     <span class="mval amber"   id="m-xi">—</span></div>
+  <div class="mrow"><span class="mkey">ξ CLUSTERS</span>      <span class="mval magenta" id="m-cl">—</span></div>
+</div>
+
+<div class="panel" id="p-chart">
+  <div class="panel-label">Ω — Hierarchical Closure</div>
+  <canvas class="chart-canvas" id="ch-omega" height="70"></canvas>
+  <div class="divider"></div>
+  <div class="panel-label">|ξ| — Active Field Count</div>
+  <canvas class="chart-canvas" id="ch-xi" height="50"></canvas>
+</div>
+
+<div class="panel" id="p-legend">
+  <div class="panel-label">Legend</div>
+  <div class="lrow"><div class="ldot" style="background:#0d1820"></div>Inactive / small cluster</div>
+  <div class="lrow"><div class="ldot" style="background:#FF9500;box-shadow:0 0 6px #FF9500"></div>Particle 1 (largest cluster)</div>
+  <div class="lrow"><div class="ldot" style="background:#FF00AA;box-shadow:0 0 6px #FF00AA"></div>Particle 2 (2nd largest)</div>
+  <div class="divider"></div>
+  <div class="lrow"><div class="lline" style="background:#0d1a28"></div>Hyperedge (inactive)</div>
+  <div class="lrow"><div class="lline" style="background:linear-gradient(90deg,#FF9500,#FF00AA)"></div>Intra-cluster tube</div>
+  <div class="lrow"><div class="lline" style="background:#FFE600;box-shadow:0 0 4px #FFE600"></div>Cross-cluster (interaction)</div>
+  <div class="divider" style="margin:6px 0 4px"></div>
+  <div style="font-size:9px;color:rgba(138,184,204,.35);letter-spacing:.1em;">Z-AXIS = CAUSAL DEPTH (TIME)</div>
+</div>
+
+<div class="panel" id="p-ctrl">
+  <button class="btn on" id="btn-play">⏸ PAUSE</button>
+  <div class="sep"></div>
+  <button class="btn" id="btn-edges">EDGES ON</button>
+  <button class="btn" id="btn-force">FORCE ON</button>
+  <div class="sep"></div>
+  <span class="slabel">SPEED</span>
+  <input type="range" id="sld-speed" min="1" max="10" value="5">
+  <div class="sep"></div>
+  <button class="btn" id="btn-reset">↺ RESET VIEW</button>
+  <div class="sep"></div>
+  <button class="btn" id="btn-save">📷 SAVE SNAPSHOT</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+// ═══════════════════════════════════════════════════════════
+//  HCSN Live Visualizer  —  Three.js r128  —  RTX Edition
+//  Tubes via InstancedMesh — zero GC per frame
+// ═══════════════════════════════════════════════════════════
+
+const WS_URL        = "ws://localhost:8765";
+const RECONNECT_MS  = 2500;
+const MAX_OMEGA_HIS = 250;
+const MAX_XI_HIS    = 250;
+
+// ── Renderer ──────────────────────────────────────────────
+const canvas = document.getElementById("cvs");
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  preserveDrawingBuffer: true,
+  powerPreference: "high-performance",
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+scene.fog        = new THREE.FogExp2(0x000000, 0.0018);
+
+const cam = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2000);
+cam.position.set(0, 20, 180);
+cam.lookAt(0, 0, 0);
+
+// ── Lights ────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x223344, 6));
+
+// Amber key light — follows P1 centroid
+const ptLight = new THREE.PointLight(0xFF9500, 2.2, 700);
+ptLight.position.set(0, 60, 80);
+scene.add(ptLight);
+
+// Magenta rim — static
+const rimLight = new THREE.PointLight(0xFF00AA, 1.4, 400);
+rimLight.position.set(-80, -40, -60);
+scene.add(rimLight);
+
+// Cool fill
+const fillLight = new THREE.PointLight(0x0055cc, 0.7, 500);
+fillLight.position.set(100, 80, 0);
+scene.add(fillLight);
+
+// ── Orbit controls ────────────────────────────────────────
+const orbit = { theta: 0, phi: 1.1, r: 180 };
+let drag = false, lastMX = 0, lastMY = 0;
+canvas.addEventListener("mousedown", e => { drag = true; lastMX = e.clientX; lastMY = e.clientY; });
+window.addEventListener("mouseup",   ()  => { drag = false; });
+window.addEventListener("mousemove", e  => {
+  if (!drag) return;
+  orbit.theta -= (e.clientX - lastMX) * 0.004;
+  orbit.phi    = Math.max(.08, Math.min(Math.PI - .08, orbit.phi + (e.clientY - lastMY) * 0.004));
+  lastMX = e.clientX; lastMY = e.clientY;
+});
+canvas.addEventListener("wheel", e => {
+  orbit.r = Math.max(40, Math.min(600, orbit.r + e.deltaY * 0.12));
+}, { passive: true });
+document.getElementById("btn-reset").addEventListener("click", () => {
+  orbit.theta = 0; orbit.phi = 1.1; orbit.r = 180;
+});
+
+// ── Snapshot ──────────────────────────────────────────────
+document.getElementById("btn-save").addEventListener("click", () => {
+  renderer.render(scene, cam);
+  const out = document.createElement("canvas");
+  out.width  = canvas.width;
+  out.height = canvas.height;
+  const ctx  = out.getContext("2d");
+  ctx.drawImage(canvas, 0, 0);
+
+  const t     = document.getElementById("m-t").textContent;
+  const omega = document.getElementById("m-om").textContent;
+  const xi    = document.getElementById("m-xi").textContent;
+  const cls   = document.getElementById("m-cl").textContent;
+  const verts = document.getElementById("m-v").textContent;
+  const edges = document.getElementById("m-e").textContent;
+
+  ctx.fillStyle = "rgba(0,0,0,0.82)";
+  ctx.fillRect(16, 16, 260, 145);
+  ctx.strokeStyle = "rgba(255,149,0,0.3)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(16, 16, 260, 145);
+
+  ctx.font = "bold 18px monospace"; ctx.fillStyle = "#FF9500";
+  ctx.fillText("HCSN Theory", 28, 44);
+  ctx.font = "11px monospace"; ctx.fillStyle = "rgba(138,184,204,0.5)";
+  ctx.fillText("Live Simulation Snapshot", 28, 60);
+
+  [["Step (t)", t, "#00d4ff"], ["Ω hier.closure", omega, "#00d4ff"],
+   ["|ξ| active", xi, "#FF9500"], ["ξ clusters", cls, "#FF00AA"],
+   ["Vertices", verts, "#d0eeff"], ["Hyperedges", edges, "#d0eeff"]]
+  .forEach(([k, v, col], i) => {
+    const y = 84 + i*17;
+    ctx.font = "10px monospace"; ctx.fillStyle = "rgba(138,184,204,0.4)";
+    ctx.fillText(k, 28, y);
+    ctx.fillStyle = col; ctx.font = "bold 10px monospace";
+    ctx.fillText(v, 184, y);
+  });
+
+  const chEl = document.getElementById("ch-omega");
+  ctx.drawImage(chEl, out.width - chEl.width - 16, 16, chEl.width, chEl.height);
+  ctx.font = "9px monospace"; ctx.fillStyle = "rgba(255,149,0,0.2)";
+  ctx.fillText("hcsn.tech", out.width - 72, out.height - 12);
+
+  const link = document.createElement("a");
+  link.download = `hcsn_t${t}_omega${omega}.png`;
+  link.href = out.toDataURL("image/png");
+  link.click();
+});
+
+window.addEventListener("resize", () => {
+  cam.aspect = window.innerWidth / window.innerHeight;
+  cam.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Node physics maps ─────────────────────────────────────
+const pos   = new Map();   // id → Float32Array(3)
+const vel   = new Map();   // id → Float32Array(3)
+const ndata = new Map();   // id → vertex data
+let orderedIds   = [];
+let maxDepthGlob = 1;
+
+// ── Force params ──────────────────────────────────────────
+const REPEL   = 90;
+const ATTRACT = 0.032;
+const DAMP    = 0.60;
+const Z_FORCE = 0.06;
+const GRAVITY = 0.022;
+let   forceEnabled = true;
+
+function applyForces(edgeList, maxDepth) {
+  if (!forceEnabled) return;
+  const ids = orderedIds;
+  const n   = ids.length;
+  if (n === 0) return;
+
+  const sample = n > 100 ? ids.slice(-100) : ids;
+  const ns = sample.length;
+  for (let i = 0; i < ns; i++) {
+    const pa = pos.get(sample[i]); if (!pa) continue;
+    for (let j = i + 1; j < ns; j++) {
+      const pb = pos.get(sample[j]); if (!pb) continue;
+      const dx = pa[0]-pb[0], dy = pa[1]-pb[1], dz = pa[2]-pb[2];
+      const d2 = Math.max(dx*dx + dy*dy + dz*dz, 0.25);
+      const f  = REPEL / d2;
+      const il = f / Math.sqrt(d2);
+      const fx = dx*il, fy = dy*il, fz = dz*il;
+      const va = vel.get(sample[i]), vb = vel.get(sample[j]);
+      if (va) { va[0]+=fx; va[1]+=fy; va[2]+=fz; }
+      if (vb) { vb[0]-=fx; vb[1]-=fy; vb[2]-=fz; }
+    }
+  }
+  for (const edge of edgeList) {
+    for (let i = 0; i < edge.length - 1; i++) {
+      const pa = pos.get(edge[i]),   va = vel.get(edge[i]);
+      const pb = pos.get(edge[i+1]), vb = vel.get(edge[i+1]);
+      if (!pa || !pb || !va || !vb) continue;
+      const dx = (pb[0]-pa[0])*ATTRACT, dy = (pb[1]-pa[1])*ATTRACT, dz = (pb[2]-pa[2])*ATTRACT;
+      va[0]+=dx; va[1]+=dy; va[2]+=dz;
+      vb[0]-=dx; vb[1]-=dy; vb[2]-=dz;
+    }
+  }
+  const md = Math.max(maxDepth, 1);
+  for (const id of ids) {
+    const p = pos.get(id), v = vel.get(id), d = ndata.get(id);
+    if (!p || !v || !d) continue;
+    const zTarget = ((d.depth / md) - 0.5) * 140;
+    v[2] += (zTarget - p[2]) * Z_FORCE;
+    v[0] -= p[0] * GRAVITY; v[1] -= p[1] * GRAVITY;
+    v[0] *= DAMP; v[1] *= DAMP; v[2] *= DAMP;
+    const spd = Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+    if (spd > 6) { const k = 6/spd; v[0]*=k; v[1]*=k; v[2]*=k; }
+    p[0] += v[0]; p[1] += v[1]; p[2] += v[2];
+  }
+}
+
+// ── Color system ──────────────────────────────────────────
+// P1 = amber #FF9500, P2 = magenta #FF00AA, cross = yellow, inactive = near-black
+const CLUSTER_HUES = [36, 315, 60, 180, 90, 270, 0, 130];
+let top2Clusters = new Set();
+
+function hslToRgb(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h/30) % 12;
+  const a = s * Math.min(l, 1-l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n), 1)));
+  return [f(0), f(8), f(4)];
+}
+
+function computeTop2Clusters() {
+  const sizes = {};
+  for (const [, d] of ndata) {
+    if (d.cluster >= 0 && d.xi > 0) sizes[d.cluster] = (sizes[d.cluster] || 0) + 1;
+  }
+  const sorted = Object.entries(sizes).sort((a,b) => b[1]-a[1]).slice(0,2).map(e => parseInt(e[0]));
+  top2Clusters = new Set(sorted);
+}
+
+function xiToRGB(xi, xiMax, cluster) {
+  const t = Math.min(xi / Math.max(xiMax, 1e-9), 1.0);
+  if (t < 0.005) return [0.10, 0.22, 0.42];  // visible steel blue on black
+  if (cluster >= 0 && top2Clusters.has(cluster)) {
+    const rank  = [...top2Clusters].indexOf(cluster);
+    const hue   = CLUSTER_HUES[rank % CLUSTER_HUES.length];
+    return hslToRgb(hue, 90, 40 + t * 30);
+  }
+  return [0.0, 0.12 + t*0.15, 0.2 + t*0.2];
+}
+
+function ptSize(xi, xiMax) {
+  return 1.5 + Math.min(xi / Math.max(xiMax, 1e-9), 1.0) * 6.0;
+}
+
+// ── Node geometry (Points with glow shader) ───────────────
+let nodeObj = null, nodeCapacity = 0;
+
+function ensureNodeGeometry(count) {
+  if (nodeObj && nodeCapacity >= count) return;
+  const cap = Math.max(count + 50, 100);
+  if (nodeObj) { scene.remove(nodeObj); nodeObj.geometry.dispose(); nodeObj.material.dispose(); }
+  const geo  = new THREE.BufferGeometry();
+  const pArr = new Float32Array(cap * 3);
+  const cArr = new Float32Array(cap * 3);
+  const sArr = new Float32Array(cap);
+  geo.setAttribute("position", new THREE.BufferAttribute(pArr, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute("color",    new THREE.BufferAttribute(cArr, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute("size",     new THREE.BufferAttribute(sArr, 1).setUsage(THREE.DynamicDrawUsage));
+  const mat = new THREE.ShaderMaterial({
+    vertexColors: true, transparent: true, depthWrite: false,
+    uniforms: { opacity: { value: 1.0 } },
+    vertexShader: `
+      attribute float size; attribute vec3 color; varying vec3 vColor;
+      void main() {
+        vColor = color;
+        vec4 mvp = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = size * (320.0 / -mvp.z);
+        gl_Position  = projectionMatrix * mvp;
+      }`,
+    fragmentShader: `
+      varying vec3 vColor; uniform float opacity;
+      void main() {
+        vec2 uv = gl_PointCoord * 2.0 - 1.0;
+        float d = dot(uv, uv);
+        if (d > 1.0) discard;
+        float core = exp(-d * 4.0);
+        float halo = exp(-d * 1.2) * 0.4;
+        vec3 col   = vColor + vColor * core * 0.8;
+        gl_FragColor = vec4(col, (core + halo) * opacity);
+      }`,
+  });
+  nodeObj = new THREE.Points(geo, mat);
+  nodeCapacity = cap;
+  scene.add(nodeObj);
+}
+
+// ── Edge rendering via LineSegments ──────────────────────
+let edgeObj      = null;
+let edgeCapacity = 0;
+
+function ensureEdgeGeometry(count) {
+  const slots = count * 2;
+  if (edgeObj && edgeCapacity >= slots) return;
+  const cap = Math.max(slots + 100, 200);
+  if (edgeObj) { scene.remove(edgeObj); edgeObj.geometry.dispose(); edgeObj.material.dispose(); }
+  const geo = new THREE.BufferGeometry();
+  const epos = new Float32Array(cap * 3);
+  const ecol = new Float32Array(cap * 3);
+  geo.setAttribute("position", new THREE.BufferAttribute(epos, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute("color",    new THREE.BufferAttribute(ecol, 3).setUsage(THREE.DynamicDrawUsage));
+  const mat = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent:  true,
+    opacity:      0.90,
+    depthWrite:   false,
+  });
+  edgeObj      = new THREE.LineSegments(geo, mat);
+  edgeCapacity = cap;
+  scene.add(edgeObj);
+}
+
+// ── Ingest simulation state ───────────────────────────────
+let showEdges   = true;
+let latestEdges = [];
+let latestXiMax = 1.0;
+
+function ingestState(state) {
+  const verts = state.vertices || [];
+  latestEdges  = state.edges   || [];
+  latestXiMax  = state.xi_max  || 1.0;
+
+  const presentIds = new Set(verts.map(v => v.id));
+  for (const id of pos.keys()) {
+    if (!presentIds.has(id)) { pos.delete(id); vel.delete(id); ndata.delete(id); }
+  }
+
+  let md = 1;
+  for (const v of verts) {
+    if (!pos.has(v.id)) {
+      pos.set(v.id, new Float32Array([(Math.random()-.5)*70, (Math.random()-.5)*70, (Math.random()-.5)*70]));
+      vel.set(v.id, new Float32Array(3));
+    }
+    ndata.set(v.id, v);
+    if (v.depth > md) md = v.depth;
+  }
+  maxDepthGlob = md;
+  orderedIds   = Array.from(pos.keys());
+}
+
+// ── Flush to Three.js buffers ─────────────────────────────
+function flushBuffers() {
+  const ids = orderedIds;
+  const n   = ids.length;
+  computeTop2Clusters();
+  ensureNodeGeometry(n);
+
+  const pArr = nodeObj.geometry.attributes.position.array;
+  const cArr = nodeObj.geometry.attributes.color.array;
+  const sArr = nodeObj.geometry.attributes.size.array;
+
+  for (let i = 0; i < n; i++) {
+    const id = ids[i], p = pos.get(id), d = ndata.get(id);
+    if (!p || !d) continue;
+    pArr[i*3] = p[0]; pArr[i*3+1] = p[1]; pArr[i*3+2] = p[2];
+    const [r,g,b] = xiToRGB(d.xi, latestXiMax, d.cluster);
+    cArr[i*3] = r; cArr[i*3+1] = g; cArr[i*3+2] = b;
+    sArr[i]   = ptSize(d.xi, latestXiMax);
+  }
+  nodeObj.geometry.attributes.position.needsUpdate = true;
+  nodeObj.geometry.attributes.color.needsUpdate    = true;
+  nodeObj.geometry.attributes.size.needsUpdate     = true;
+  nodeObj.geometry.setDrawRange(0, n);
+
+  // ── Edges (LineSegments) ─────────────────────────────────
+  if (showEdges && latestEdges.length > 0) {
+    let segCount = 0;
+    for (const edge of latestEdges) {
+      if (edge.length >= 2) segCount += edge.length - 1;
+    }
+    ensureEdgeGeometry(segCount);
+
+    const ep = edgeObj.geometry.attributes.position.array;
+    const ec = edgeObj.geometry.attributes.color.array;
+    let idx  = 0;
+
+    for (const edge of latestEdges) {
+      for (let i = 0; i < edge.length - 1; i++) {
+        const pa = pos.get(edge[i]);
+        const pb = pos.get(edge[i+1]);
+        if (!pa || !pb) continue;
+
+        const xiA = ndata.get(edge[i])?.xi       || 0;
+        const xiB = ndata.get(edge[i+1])?.xi     || 0;
+        const clA = ndata.get(edge[i])?.cluster   ?? -1;
+        const clB = ndata.get(edge[i+1])?.cluster ?? -1;
+        const act    = (xiA + xiB) > 0.01;
+        const sameCl = act && clA === clB && clA >= 0;
+
+        let er, eg, eb;
+        if (sameCl) {
+          const rank = [...top2Clusters].indexOf(clA);
+          if      (rank === 0) { [er, eg, eb] = hslToRgb(36,  95, 60); }
+          else if (rank === 1) { [er, eg, eb] = hslToRgb(315, 95, 60); }
+          else                 { er = 0.0; eg = 0.22; eb = 0.35; }
+        } else if (act) {
+          er = 1.0; eg = 0.90; eb = 0.0;
+        } else {
+          er = 0.10; eg = 0.20; eb = 0.42;
+        }
+
+        ep[idx*6]   = pa[0]; ep[idx*6+1] = pa[1]; ep[idx*6+2] = pa[2];
+        ep[idx*6+3] = pb[0]; ep[idx*6+4] = pb[1]; ep[idx*6+5] = pb[2];
+        ec[idx*6]   = er;    ec[idx*6+1] = eg;    ec[idx*6+2] = eb;
+        ec[idx*6+3] = er;    ec[idx*6+4] = eg;    ec[idx*6+5] = eb;
+        idx++;
+        if (idx * 6 >= edgeCapacity * 3 - 6) break;
+      }
+    }
+
+    edgeObj.geometry.attributes.position.needsUpdate = true;
+    edgeObj.geometry.attributes.color.needsUpdate    = true;
+    edgeObj.geometry.setDrawRange(0, idx * 2);
+    edgeObj.visible = true;
+  } else if (edgeObj) {
+    edgeObj.visible = false;
+  }
+}
+
+// ── Charts ────────────────────────────────────────────────
+const omegaHis = [];
+const xiHis    = [];
+
+function drawChart(id, data, strokeColor, fillColor) {
+  const el = document.getElementById(id);
+  const W  = el.clientWidth || 228;
+  const H  = el.height || 70;
+  el.width = W;
+  const ctx = el.getContext("2d");
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(0,0,0,.65)";
+  ctx.fillRect(0, 0, W, H);
+  if (data.length < 2) return;
+  ctx.strokeStyle = "rgba(255,149,0,.06)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) {
+    const y = (i / 3) * H;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  const mx = Math.max(...data, 1e-9) * 1.1;
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (MAX_OMEGA_HIS - 1)) * W;
+    const y = H - (v / mx) * H;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = fillColor; ctx.fill();
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (MAX_OMEGA_HIS - 1)) * W;
+    const y = H - (v / mx) * H;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = strokeColor; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = strokeColor; ctx.font = "10px monospace";
+  ctx.fillText(data[data.length-1].toFixed(5), W - 68, 12);
+}
+
+// ── WebSocket ─────────────────────────────────────────────
+let ws = null, paused = false, pendingState = null;
+
+function connect() {
+  document.getElementById("ov-txt").textContent = "CONNECTING TO SIMULATION ENGINE...";
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    document.getElementById("dot").className        = "live";
+    document.getElementById("m-status").textContent = "LIVE";
+    document.getElementById("overlay").classList.add("gone");
+  };
+  ws.onmessage = e => { if (paused) return; try { pendingState = JSON.parse(e.data); } catch {} };
+  ws.onclose = () => {
+    document.getElementById("dot").className        = "";
+    document.getElementById("m-status").textContent = "OFFLINE";
+    document.getElementById("overlay").classList.remove("gone");
+    document.getElementById("ov-txt").textContent   = "RECONNECTING...";
+    setTimeout(connect, RECONNECT_MS);
+  };
+  ws.onerror = () => ws.close();
+}
+
+// ── Controls ──────────────────────────────────────────────
+const playBtn  = document.getElementById("btn-play");
+const edgeBtn  = document.getElementById("btn-edges");
+const forceBtn = document.getElementById("btn-force");
+const sldSpeed = document.getElementById("sld-speed");
+
+playBtn.addEventListener("click", () => {
+  paused = !paused;
+  playBtn.textContent = paused ? "▶ RESUME" : "⏸ PAUSE";
+  playBtn.classList.toggle("on", !paused);
+});
+edgeBtn.addEventListener("click", () => {
+  showEdges = !showEdges;
+  edgeBtn.textContent = showEdges ? "EDGES ON" : "EDGES OFF";
+  edgeBtn.classList.toggle("on", showEdges);
+});
+forceBtn.addEventListener("click", () => {
+  forceEnabled = !forceEnabled;
+  forceBtn.textContent = forceEnabled ? "FORCE ON" : "FORCE OFF";
+  forceBtn.classList.toggle("on", forceEnabled);
+});
+
+// ── Render loop ───────────────────────────────────────────
+let lastStateTime = 0;
+
+function animate(now) {
+  requestAnimationFrame(animate);
+
+  const sx = Math.sin(orbit.phi) * Math.sin(orbit.theta);
+  const sy = Math.cos(orbit.phi);
+  const sz = Math.sin(orbit.phi) * Math.cos(orbit.theta);
+  cam.position.set(sx * orbit.r, sy * orbit.r, sz * orbit.r);
+  cam.lookAt(0, 0, 0);
+
+  const speed    = parseInt(sldSpeed.value);
+  const minDelay = Math.max(16, 220 - speed * 20);
+
+  if (pendingState && now - lastStateTime > minDelay) {
+    const s   = pendingState;
+    pendingState  = null;
+    lastStateTime = now;
+
+    ingestState(s);
+
+    document.getElementById("m-t").textContent     = s.t;
+    document.getElementById("m-phase").textContent = s.phase_label || "—";
+    document.getElementById("m-v").textContent     = s.stats?.total_vertices ?? "—";
+    document.getElementById("m-e").textContent     = s.stats?.total_edges    ?? "—";
+    document.getElementById("m-om").textContent    = (s.omega ?? 0).toFixed(6);
+    document.getElementById("m-xi").textContent    = s.stats?.xi_count       ?? "—";
+    document.getElementById("m-cl").textContent    = s.stats?.xi_clusters    ?? "—";
+
+    omegaHis.push(s.omega ?? 0);
+    xiHis.push(s.stats?.xi_count ?? 0);
+    if (omegaHis.length > MAX_OMEGA_HIS) omegaHis.shift();
+    if (xiHis.length    > MAX_XI_HIS)    xiHis.shift();
+
+    drawChart("ch-omega", omegaHis, "#FF9500", "rgba(255,149,0,.08)");
+    drawChart("ch-xi",    xiHis,    "#FF00AA", "rgba(255,0,170,.07)");
+
+    // Move amber key light toward active centroid
+    let cx=0, cy=0, cz=0, cnt=0;
+    for (const v of (s.vertices || [])) {
+      if (v.xi > 0.01) {
+        const p = pos.get(v.id);
+        if (p) { cx+=p[0]; cy+=p[1]; cz+=p[2]; cnt++; }
+      }
+    }
+    if (cnt > 0) ptLight.position.lerp(new THREE.Vector3(cx/cnt, cy/cnt + 40, cz/cnt + 50), 0.05);
+  }
+
+  applyForces(latestEdges, maxDepthGlob);
+  flushBuffers();
+  renderer.render(scene, cam);
+}
+
+// ── Boot ──────────────────────────────────────────────────
+connect();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

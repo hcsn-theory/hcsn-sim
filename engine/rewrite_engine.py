@@ -48,7 +48,7 @@ class RewriteEngine:
         gamma_closure=0.05,
         gamma_hier=0.06,
         epsilon_label_violation=0.08,
-        XI_DECAY=0.85,
+        XI_DECAY=0.70,
         XI_COUPLING=0.6,
         verbose=True,
         print_interval=50,
@@ -280,7 +280,7 @@ class RewriteEngine:
             # --- ξ cluster metastability window ---
             protect_clusters = (
                 self.forced_time is not None
-                and self.time - self.forced_time < 100
+                and self.time - self.forced_time < 999999
             )
 
             for u in neighbors:
