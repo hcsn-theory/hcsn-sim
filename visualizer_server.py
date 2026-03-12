@@ -203,7 +203,7 @@ async def main():
     print("=" * 54)
     print("  HCSN Live Visualizer  -  Interaction Experiment")
     print("=" * 54)
-    print(f"  WebSocket : ws://localhost:8765")
+    print(f"  WebSocket : ws://0.0.0.0:8765")
     print(f"  Stream    : {STREAM_HZ} fps  |  Seed: {SEED}")
     print(f"  Omega target : {OMEGA_TARGET} +/- {OMEGA_TOL}")
     print(f"  Open visualizer.html in your browser")
