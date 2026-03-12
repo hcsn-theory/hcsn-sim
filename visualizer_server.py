@@ -209,7 +209,7 @@ async def main():
     print(f"  Open visualizer.html in your browser")
     print("=" * 54)
 
-    async with websockets.serve(run_simulation, "localhost", 8765):
+    async with websockets.serve(run_simulation, "0.0.0.0", 8765):
         await asyncio.Future()
 
 
