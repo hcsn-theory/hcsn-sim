@@ -1,5 +1,4 @@
 pytest
 websocket
 asyncio
-json
 math
