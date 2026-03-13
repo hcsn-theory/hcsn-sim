@@ -48,7 +48,7 @@ PHASE_LABELS = {
 }
 
 
-def build_state(engine, H, phase):
+def build_state(engine, H, phase, session_logs):
     inter      = getattr(engine, "_cached_inter", {})
     xi_cl      = engine.xi_clusters(inter)
     xi_thresh  = engine.xi_threshold
@@ -108,12 +108,19 @@ def build_state(engine, H, phase):
             "xi_clusters":     len(cluster_sizes),
             "largest_cluster": max(cluster_sizes.values(), default=0),
         },
+        "logs": list(session_logs),
     }
 
 
 async def run_simulation(websocket, path=None):
     addr = getattr(websocket, "remote_address", "unknown")
-    print(f"[server] Client connected: {addr}")
+    
+    session_logs = []
+    def log_cb(msg):
+        print(msg) # Still print to server console
+        session_logs.append(msg)
+
+    log_cb(f"[server] Client connected: {addr}")
 
     H  = Hypergraph()
     v1 = H.add_vertex()
@@ -121,7 +128,7 @@ async def run_simulation(websocket, path=None):
     H.add_causal_relation(v1, v2)
     H.add_hyperedge([v1, v2])
 
-    engine = RewriteEngine(H, seed=SEED, XI_DECAY=0.70, verbose=False, print_interval=99999)
+    engine = RewriteEngine(H, seed=SEED, XI_DECAY=0.70, verbose=False, print_interval=99999, log_callback=log_cb)
     engine.topo_distance_memory = {}
     engine.xi_distance_memory   = {}
 
@@ -129,7 +136,7 @@ async def run_simulation(websocket, path=None):
     steps_since_inject = 0
     delay              = 1.0 / STREAM_HZ
 
-    print("[server] Phase 0: growing universe toward Omega target...")
+    log_cb("[server] Phase 0: growing universe toward Omega target...")
 
     try:
         while True:
@@ -139,14 +146,14 @@ async def run_simulation(websocket, path=None):
                 inter = worldline_interaction_graph(H)
                 omega = hierarchical_closure(H, inter)
                 if abs(omega - OMEGA_TARGET) < OMEGA_TOL:
-                    print(f"[server] Omega={omega:.4f} reached at t={engine.time}")
+                    log_cb(f"[server] Omega={omega:.4f} reached at t={engine.time}")
                     ok = engine.force_defect(magnitude=FIRST_DEFECT_MAG)
                     if ok:
-                        print(f"[server] Phase 1: first particle injected at t={engine.time}")
+                        log_cb(f"[server] Phase 1: first particle injected at t={engine.time}")
                         phase              = 1
                         steps_since_inject = 0
                     else:
-                        print("[server] First inject failed, retrying next step")
+                        log_cb("[server] First inject failed, retrying next step")
 
             elif phase == 1:
                 steps_since_inject += 1
@@ -155,7 +162,7 @@ async def run_simulation(websocket, path=None):
                     seed_v = next(iter(engine.H.vertices.keys()), None)
                     if seed_v:
                         engine.xi[seed_v] = 0.2
-                        print(f"[server] xi re-seeded at v={seed_v}")
+                        log_cb(f"[server] xi re-seeded at v={seed_v}")
 
                 if steps_since_inject >= STABILIZE_BEFORE_PROBE:
                     ok = engine.force_second_proto_object(
@@ -164,11 +171,11 @@ async def run_simulation(websocket, path=None):
                         min_distance=SECOND_DEFECT_MIN_DIST,
                     )
                     if ok:
-                        print(f"[server] Phase 2: second particle injected at t={engine.time}")
+                        log_cb(f"[server] Phase 2: second particle injected at t={engine.time}")
                         phase = 2
                     else:
                         # Don't retry forever — force inject on a random inactive vertex
-                        print(f"[server] Injection failed at t={engine.time}, forcing on random vertex")
+                        log_cb(f"[server] Injection failed at t={engine.time}, forcing on random vertex")
                         candidates = [
                             vid for vid in engine.H.vertices
                             if engine.xi.get(vid, 0.0) <= engine.xi_threshold
@@ -178,10 +185,11 @@ async def run_simulation(websocket, path=None):
                             vid = random.choice(candidates)
                             engine.xi[vid] = SECOND_DEFECT_XI
                             engine.forced_time = engine.time
-                            print(f"[server] Force-injected at v={vid}")
+                            log_cb(f"[server] Force-injected at v={vid}")
                         phase = 2  # advance regardless
 
-            state = build_state(engine, H, phase)
+            state = build_state(engine, H, phase, session_logs)
+            session_logs.clear() # clear after sending
             try:
                 await websocket.send(json.dumps(state))
             except (websockets.exceptions.ConnectionClosed,
@@ -192,11 +200,11 @@ async def run_simulation(websocket, path=None):
             await asyncio.sleep(delay)
 
     except Exception as exc:
-        print(f"[server] Error: {exc}")
+        log_cb(f"[server] Error: {exc}")
         import traceback
         traceback.print_exc()
     finally:
-        print(f"[server] Client disconnected: {addr}")
+        log_cb(f"[server] Client disconnected: {addr}")
 
 
 async def main():

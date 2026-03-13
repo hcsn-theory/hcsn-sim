@@ -52,6 +52,7 @@ class RewriteEngine:
         XI_COUPLING=0.6,
         verbose=True,
         print_interval=50,
+        log_callback=None,
     ):
         self.H = hypergraph
         self.p_create = p_create
@@ -87,6 +88,7 @@ class RewriteEngine:
         self.time = 0
         self.verbose = verbose
         self.print_interval = print_interval
+        self.log_callback = log_callback
 
         if seed is not None:
             random.seed(seed)
@@ -115,7 +117,9 @@ class RewriteEngine:
         undo = self._propose_rewrite()
         
         if undo is None and self.time % 200 == 0:
-            print("[debug] rewrite skipped at t =", self.time)
+            msg = f"[debug] rewrite skipped at t = {self.time}"
+            if self.log_callback: self.log_callback(msg)
+            else: print(msg)
             
         if undo is None:
             return False
@@ -135,7 +139,9 @@ class RewriteEngine:
         inter_after = worldline_interaction_graph(self.H)
         
         if self.time % 200 == 0:
-            print("[debug] interaction nodes =", len(inter_after))
+            msg = f"[debug] interaction nodes = {len(inter_after)}"
+            if self.log_callback: self.log_callback(msg)
+            else: print(msg)
         if self.time % 50 == 0:    
             omega_after = hierarchical_closure(self.H, inter_after)
         else:
@@ -225,17 +231,21 @@ class RewriteEngine:
         self._last_step_time = time.perf_counter() - _t0
         
         if self.time % 200 == 0:
-            print("[debug] max causal depth =", self.H.max_chain_length())
+            msg = f"[debug] max causal depth = {self.H.max_chain_length()}"
+            if self.log_callback: self.log_callback(msg)
+            else: print(msg)
         
         if self.verbose and self.time % self.print_interval == 0:
             xi_count = sum(1 for x in self.xi.values() if x > self.xi_threshold)
-            print(
+            msg = (
                 f"[engine] t={self.time} "
                 f"step={self._last_step_time*1000:.2f}ms "
                 f"Ω={omega_print:.6f} "
                 f"|ξ|={xi_count} "
                 f"geom_pairs={len(self.topo_distance_memory) + len(self.xi_distance_memory)}"
             )
+            if self.log_callback: self.log_callback(msg)
+            else: print(msg)
 
         return accepted
     
@@ -606,7 +616,9 @@ class RewriteEngine:
             self._record_rewrite(undo)
 
             if self.verbose:
-                print(f"[inject] defect at t={self.time} v={vid}")
+                msg = f"[inject] defect at t={self.time} v={vid}"
+                if self.log_callback: self.log_callback(msg)
+                else: print(msg)
             return True
 
         # failed after retries
@@ -656,7 +668,9 @@ class RewriteEngine:
                 u = next(iter(xi_support))
                 
                 self.forced_time = self.time
-                print(f"### SECOND PROBE at t={self.time} | v={vid} | d={d}")
+                msg = f"### SECOND PROBE at t={self.time} | v={vid} | d={d}"
+                if self.log_callback: self.log_callback(msg)
+                else: print(msg)
                 return True
 
         # --- guaranteed fallback (never abort experiment) ---
@@ -667,10 +681,12 @@ class RewriteEngine:
             self.pending_bridge = (u, best_vid)
             self.pending_bridge_time = self.time
             self.forced_time = self.time
-            print(
+            msg = (
                 f"### SECOND PROBE (fallback) at t={self.time} | "
                 f"v={best_vid} | d={best_d}"
             )
+            if self.log_callback: self.log_callback(msg)
+            else: print(msg)
             return True
 
         return False
