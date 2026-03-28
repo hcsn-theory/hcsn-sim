@@ -1,18 +1,38 @@
 cff-version: 1.2.0
-message: "If you use this theory or simulation code, please cite it as follows."
+message: "If you use this simulation code or the HCSN framework in your research, please cite it as follows."
 authors:
-  - family-names: "The HCSN Research Group"
-    given-names: "@hcsn"
-    affiliation: "The HCSN Research Group"
+  - family-names: "Mukhtar"
+    given-names: "Saif"
     orcid: "https://orcid.org/0009-0004-1698-5729"
-title: "The Holographic Computational Spin-Network (HCSN): Theory & Simulation"
+title: "HCSN: A Hierarchical Causal Structure Network Framework for Emergent Physics"
 version: 1.0.0
-date-released: 2025-12-21
-url: "https://hcsn-theory.github.io/HCSN-Theory/"
-repository-code: "https://github.com/hcsn-theory/HCSN-Theory"
+date-released: 2026-01-03
+doi: 10.55277/researchhub.fvahxvpt.1
+url: "https://doi.org/10.55277/researchhub.fvahxvpt.1"
+repository-code: "https://github.com/hcsn-theory/hcsn-sim"
+license: Apache-2.0
 keywords:
-  - quantum-gravity
+  - causal-structure
   - hypergraph-rewriting
   - emergent-spacetime
-  - unification
-license: Apache-2.0
+  - emergent-physics
+  - quantum-gravity
+  - computational-physics
+  - discrete-causal-dynamics
+abstract: >
+  HCSN (Hierarchical Causal Structure Networks) is a framework for emergent
+  physics based on a discrete causal substrate. The universe is modeled as
+  a hypergraph of events and directed causal relations, evolved by local
+  probabilistic rewrite rules. Spacetime, particles, mass, and quantum
+  behavior are not assumed — they emerge from what statistically persists
+  under rewrite dynamics.
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Mukhtar"
+      given-names: "Saif"
+      orcid: "https://orcid.org/0009-0004-1698-5729"
+  title: "HCSN: A Hierarchical Causal Structure Network Framework for Emergent Physics"
+  year: 2026
+  doi: 10.55277/researchhub.fvahxvpt.1
+  url: "https://doi.org/10.55277/researchhub.fvahxvpt.1"
