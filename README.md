@@ -1,180 +1,252 @@
-# 🌀 HCSN Theory — Hierarchial Closure Structure Network
+# 🌀 HCSN — Hierarchical Causal Structure Network
 
-
-[![DOI](https://zenodo.org/badge/1118466950.svg)](https://doi.org/10.5281/zenodo.18025757)
+[![DOI](https://img.shields.io/badge/DOI-10.55277%2Fresearchhub.fvahxvpt.1-blue)](https://doi.org/10.55277/researchhub.fvahxvpt.1)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0004--1698--5729-green.svg)](https://orcid.org/0009-0004-1698-5729)
 
 ---
 
-> HCSN (Hierarchial Closure Structure Network) explores the hypothesis that the universe is fundamentally computational — discrete events and causal relations .
+> **HCSN** explores the hypothesis that the universe is fundamentally computational —
+> built from discrete events and directed causal relations, with no assumed background space, time, or quantum framework.
 
-✨ Highlights
-- Minimal, local rewrite rules drive evolution.
-- Diagnostics test emergence of time, dimensionality, and metric structure.
-- Designed as a research playground: toy universes, experiments, and visualization.
+📺 **[Watch the overview on YouTube →](https://youtu.be/A0oh6Rlx03Y)**
+📄 **[Read the paper on ResearchHub →](https://doi.org/10.55277/researchhub.fvahxvpt.1)**
 
 ---
 
-Table of Contents
+## ✨ Highlights
+
+- 🔁 **Local rewrite rules** drive the evolution of a causal hypergraph
+- 📐 **Geometry, time, and dimensionality** emerge — they are not assumed
+- 🧲 **Particles** appear as persistent topological defects in the network
+- 🔬 **Reproducible experiments** test emergence of Lorentz invariance, mass, and interaction
+- 🎥 **Built-in visualizer** and Blender importer for 3D cinematic rendering
+
+---
+
+## 📋 Table of Contents
+
 - [Overview](#overview)
 - [Repository Structure](#repository-structure)
 - [Quick Start](#quick-start)
-- [How to Run](#how-to-run-a-toy-universe)
+- [How to Run Experiments](#how-to-run-experiments)
 - [Diagnostics Explained](#diagnostics-explained)
+- [Visualization](#visualization)
 - [Current Research Focus](#current-research-focus)
 - [Contributing](#contributing)
-- [Acknowledgements & License](#acknowledgements)
+- [Citation](#citation)
+- [License & Contact](#license--contact)
 
 ---
 
 ## Overview
 
-HCSN proposes a discrete, causal, and computational substrate:
-- Events are vertices in a hypergraph; relations are (hyper)edges.
-- Dynamics are local rewrite rules (edge creation, vertex fusion).
-- Geometry, dimension, and time are emergent, not fundamental.
+HCSN proposes a discrete, causal, and computational substrate for physics:
+
+- **Events** are vertices in a hypergraph; **causal relations** are directed hyperedges
+- **Dynamics** are local probabilistic rewrite rules — no global clock, no background metric
+- **Time** is the count of irreversible rewrites (rewrite depth)
+- **Geometry, dimension, and particles** emerge from what statistically persists
 
 The long-term goal is to identify the minimal rule set that produces universes consistent with:
-- Lorentz invariance (emergent)
-- 4D spacetime structures
+- Lorentz invariance (emergent attractor)
+- 4D spacetime-like structure
 - Holographic scaling of information
-- Quantum probabilistic behavior (Born rule)
+- Quantum probabilistic behavior (Born rule from causal ignorance)
+
+The companion theory repository is at [`hcsn-theory`](https://github.com/hcsn-theory/HCSN-core-Theory).
 
 ---
 
-## Repository Structure 
+## Repository Structure
 
 ```text
-HCSN-Theory/
-├── engine/                # Core simulation engine
-│   ├── hypergraph.py      # Vertices, hyperedges, causality
-│   ├── rules.py           # Rewrite rules
-│   ├── rewrite_engine.py  # Acceptance dynamics
-│   └── observables.py     # Physical diagnostics
-├── sim-exp/           # Reproducible experiments
-├── figures/               # Generated plots & assets
-├── analysis/
-├── multiverse/
-├── simulation.log
-└── README.md
+hcsn-sim/
+├── engine/                     # Core simulation engine
+│   ├── hypergraph.py           # Vertices, hyperedges, causal ordering
+│   ├── rules.py                # Rewrite rules
+│   ├── rewrite_engine.py       # Acceptance dynamics and rewrite scheduling
+│   ├── observables.py          # Physical diagnostic measurements
+│   └── physics_params.py       # Shared physics parameters
+│
+├── sim-exp/                    # Reproducible experiments
+│   ├── run_simulation.py       # Main simulation runner
+│   ├── exp_critical_scan.py    # Phase transition scan
+│   ├── exp_phase_diagram.py    # Omega phase diagram
+│   ├── exp_long_critical_run.py
+│   ├── exp_worldline_interactions.py
+│   ├── scattering_experiment.py
+│   ├── measure/                # Measurement scripts
+│   ├── plot/                   # Plotting scripts
+│   ├── tests/                  # Test suite
+│   └── json/                   # Experiment output data
+│
+├── multiverse/                 # Multi-variant universe runs (universality tests)
+│   ├── baseline/
+│   ├── variant_1/ … variant_4/
+│
+├── analysis/                   # Legacy analysis scripts
+├── visualizer.html             # Interactive browser-based visualizer
+├── visualizer_server.py        # Local server for the visualizer
+├── blender_importer.py         # Import cinematic frames into Blender
+├── export_cinematic.py         # Export simulation to cinematic frame format
+├── export_csv.py               # Export simulation data to CSV
+├── cinematic_frames.json       # Pre-exported cinematic data
+├── hcsn_sample.csv             # Sample simulation output
+├── simulation.log              # Latest simulation log
+└── requirements.txt            # Python dependencies
 ```
 
 ---
 
-## Quick Start 
+## Quick Start
 
-Requirements
+**Requirements**
 - Python 3.10 or later
-- No external dependencies by default (pure Python). If notebooks or plotting are used, consider: matplotlib, numpy, jupyter.
+- Dependencies: `pytest`, `websockets`, `asyncio`
 
-Clone and run:
+```bash
+pip install -r requirements.txt
+```
+
+**Clone and run:**
+
 ```bash
 git clone https://github.com/hcsn-theory/hcsn-sim.git
 cd hcsn-sim
-python3 -m analysis.interaction_experiment
+python3 sim-exp/run_simulation.py
 ```
 
-This runs a universe and prints diagnostics every N steps (see config/flags in the engine if present).
+This runs a toy universe and prints diagnostics periodically.
 
 ---
 
-## How to Run
+## How to Run Experiments
 
-1. Configure parameters (if available) in `engine` or via command-line flags.
-2. Start the simulation:
-   - `python3 -m analysis.interaction_experiment`
-3. Key printed diagnostics (periodic):
-   - average coordination ⟨k⟩
-   - causal depth (L)
-   - interaction concentration (Φ)
-   - closure density (Ψ)
-   - hierarchical stability (Ω)
+The `sim-exp/` directory contains all reproducible experiments:
 
----
+| Script | Purpose |
+|--------|---------|
+| `run_simulation.py` | Main simulation runner |
+| `exp_critical_scan.py` | Scan Ω values to locate phase transition |
+| `exp_phase_diagram.py` | Map defect rate across Ω regimes |
+| `exp_long_critical_run.py` | Extended run at critical Ω |
+| `exp_worldline_interactions.py` | Two-particle interaction experiment |
+| `scattering_experiment.py` | Scattering geometry test |
 
-## Diagnostics Explained 
-
-| Symbol | Name | Meaning |
-|:------:|------|--------|
-| ⟨k⟩ | Avg coordination | Controls effective dimensionality; geometric attractor near 8. |
-| L | Causal depth | Maximum causal chain length — emergent time scale. |
-| Φ | Interaction concentration | Measures hub dominance (want small Φ for uniformity). |
-| Ψ | Closure density | Redundancy in causal closure (error correction). |
-| Ω | Hierarchical closure | RG-like stability across scales (non-zero indicates persistence). |
-
-Interpretation guide:
-- ⟨k⟩ ≈ 7.5–8.5 → spacetime-like, stable geometry.
-- Small Φ → suppressed hubs, more uniform interactions.
-- Non-zero Ω across scales → hierarchical persistence and robustness.
+**Key printed diagnostics (periodic):**
+- average coordination ⟨k⟩
+- causal depth (L)
+- interaction concentration (Φ)
+- closure density (Ψ)
+- hierarchical stability (Ω)
 
 ---
 
-## Current Research Focus 
+## Diagnostics Explained
+
+| Symbol | Name | Meaning | Target Range |
+|:------:|:-----|:--------|:------------|
+| ⟨k⟩ | Avg coordination | Controls effective dimensionality | ≈ 7.5–8.5 for spacetime-like geometry |
+| L | Causal depth | Maximum causal chain length — emergent time | Grows with rewrites |
+| Φ | Interaction concentration | Hub dominance (lower = more uniform) | Small Φ preferred |
+| Ψ | Closure density | Redundancy in causal closure | Non-zero = error correction |
+| Ω | Hierarchical closure | RG-like stability across scales | > 1.0 for persistent structure |
+
+**Phase interpretation:**
+
+| Ω Regime | Behavior |
+|----------|----------|
+| Ω < 1.0 (subcritical) | Transient defects, no stable transport |
+| Ω ≈ 1.08–1.18 (critical) | Phase transition, marginal stability |
+| Ω > 1.2 (supercritical) | Persistent worldlines, stable emergent structure |
+
+---
+
+## Visualization
+
+HCSN includes a browser-based visualizer and a Blender pipeline for cinematic rendering:
+
+**Browser Visualizer:**
+```bash
+python3 visualizer_server.py
+# Open visualizer.html in your browser
+```
+
+**Blender 3D Import:**
+1. Run `export_cinematic.py` to generate `cinematic_frames.json`
+2. Import into Blender with `blender_importer.py`
+
+**CSV Export:**
+```bash
+python3 export_csv.py
+```
+
+---
+
+## Current Research Focus
 
 Active directions:
 - Prevent metric collapse under coarse-graining
-- Implement logarithmic information metrics (holographic tests)
-- Enforce holographic bounds dynamically in evolution
-- Search for Lorentz-invariant fixed points of the rule dynamics
-- Explore mechanisms that produce quantum probabilistic outcomes (Born rule)
+- Implement logarithmic information metrics (holographic scaling tests)
+- Enforce holographic bounds dynamically during evolution
+- Search for Lorentz-invariant fixed points of the rewrite dynamics
+- Derive quantum probabilistic behavior (Born rule) from causal ignorance
 
 ---
 
 ## Contributing
 
-We welcome contributions from:
-- physicists (GR, QFT, quantum gravity)
-- mathematicians (graph theory, category theory)
-- programmers (simulation performance, visualization)
-- curious minds who can test assumptions
+We welcome contributions from physicists, mathematicians, and programmers.
 
-Getting started:
-1. Fork the repo, create a feature branch.
-2. Add reproducible experiments under `experiments/`.
-3. Document new rules, diagnostics, and observed behaviors.
-4. Open PRs with clear descriptions, expected behavior, and reproducibility notes.
+**Getting started:**
+1. Fork the repo, create a feature branch
+2. Add reproducible experiments under `sim-exp/`
+3. Document new rules, diagnostics, and observed behaviors
+4. Open a PR with clear description, expected behavior, and reproducibility notes
 
-Guidelines:
-- Write reproducible code and seed RNGs where appropriate.
-- Add tests or small example scripts demonstrating changes.
-- Keep changes modular — new rules or observables should live in `engine/`.
+**Guidelines:**
+- Seed all RNGs for reproducibility
+- New rules or observables belong in `engine/`
+- Keep experiments modular and self-contained
 
 ---
 
-## Acknowledgements
+## Citation
 
-If you use HCSN-Theory in research, please cite the repo and include a reference to the simulation version/commit used. Consider adding a DOI via Zenodo for formal citation.
+If you use HCSN in your research, please cite both the paper and the software:
 
-Please cite it as follows:
+> Saif Mukhtar. *HCSN: A Hierarchical Causal Structure Network Framework for Emergent Physics.* ResearchHub, 2026. DOI: [10.55277/researchhub.fvahxvpt.1](https://doi.org/10.55277/researchhub.fvahxvpt.1)
 
-> **The HCSN Research Group, @hcsn. (2025). The Holographic Computational Spin-Network (HCSN): Theory & Simulation (Version 1.0.0) [Computer software]. https://github.com/hcsn-theory/HCSN-Theory**
-
-### BibTeX Entry
-For LaTeX/Overleaf users:
+**BibTeX:**
 ```bibtex
-@software{HCSN2025,
-  author = {The HCSN Research Group, @hcsn.},
-  title = {The Holographic Computational Spin-Network (HCSN): Theory & Simulation},
-  version = {1.0.0},
-  year = {2025},
-  url = {[https://github.com/hcsn-theory/HCSN-Theory](https://github.com/hcsn-theory/HCSN-Theory)}
+@article{mukhtar2026hcsn,
+  author  = {Saif Mukhtar},
+  title   = {HCSN: A Hierarchical Causal Structure Network Framework for Emergent Physics},
+  year    = {2026},
+  doi     = {10.55277/researchhub.fvahxvpt.1},
+  url     = {https://doi.org/10.55277/researchhub.fvahxvpt.1}
 }
 ```
----
-
-## License & Contact 
-
-This project is active research and published under Apache 2.0 licence. For collaboration or questions, open an issue or contact the maintainers via GitHub: [hcsn-theory](https://github.com/hcsn-theory) 
 
 ---
+
+## License & Contact
+
+Published under the **Apache 2.0** licence.
+
+For collaboration or questions, open an issue or contact via GitHub: [hcsn-theory](https://github.com/hcsn-theory)
+
+---
+
 ## 🏛️ Governance
-The HCSN Research Group is maintained by **@hcsn**.
+
+The HCSN Research Group is maintained by **[@hcsn](https://github.com/hcsn-theory)**.
 
 ---
-Philosophy
-> “The universe may not be described by computation — it may be computation.”
----
-HCSN treats this as a testable hypothesis: build minimal computational rules and examine what emerges.
+
+> *"The universe may not be described by computation — it may be computation."*
+
+HCSN treats this as a **testable hypothesis**: build minimal computational rules and examine what emerges.
 
 Enjoy exploring! 🧩
