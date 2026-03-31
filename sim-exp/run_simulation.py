@@ -1,218 +1,190 @@
+import argparse
+import json
 import os
 import time
-import json
-import sys
-from datetime import datetime
 
-from analysis.update_particle_activity import update_particle_activity  
 from engine.hypergraph import Hypergraph
 from engine.rewrite_engine import RewriteEngine
-from engine.observables import (
-    worldline_interaction_graph,
-    interaction_concentration,
-    closure_density,
-    hierarchical_closure,
-)
-
-# ============================================================
-# Configuration (EXPERIMENT-LEVEL ONLY)
-# ============================================================
-
-CONFIG = {
-    "seed": 1,
-    "max_steps": 10000,
-    "sample_interval": 100,
-    "log_file": "simulation.log",
-    "timeseries_file": "timeseries.json",
-}
+from engine.observables import worldline_interaction_graph, hierarchical_closure
 
 
-# ============================================================
-# Dual-output logger (terminal + file, append-only)
-# ============================================================
+def save_data(engine, config):
+    print("\nExporting final datasets...")
 
-class DualOutput:
-    def __init__(self, filename):
-        self.terminal = sys.stdout
-        self.log = open(filename, "a")
+    tau_c = 1000
+    lifetimes = []
 
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)
-        self.terminal.flush()
-        self.log.flush()
+    for k in engine.dead_knots:
+        if k.age < 50:
+            continue
 
-    def flush(self):
-        self.terminal.flush()
-        self.log.flush()
+        is_particle = (k.age >= tau_c and k.coherence > 1.0)
+        mean_stab = (
+            sum(engine.stability.get(v, 0.0) for v in k.vertices) / max(len(k.vertices), 1)
+        )
 
+        lifetimes.append({
+            "id": k.id,
+            "status": "dead",
+            "age": k.age,
+            "max_size": k.max_size,
+            "radius": k.radius,
+            "coherence": k.coherence,
+            "velocity": k.velocity,
+            "velocity_avg": k.velocity_avg,
+            "mass": k.mass,
+            "momentum": k.momentum,
+            "worldline_length": len(k.position_history),
+            "particle_candidate": is_particle,
+            "mean_stability": mean_stab,
+        })
 
-sys.stdout = DualOutput(CONFIG["log_file"])
+    for k in engine.active_knots.values():
+        if k.age < 50:
+            continue
 
-# ============================================================
-# Initialize universe (NO PHYSICS TUNING HERE)
-# ============================================================
+        is_particle = (k.age >= tau_c and k.coherence > 1.0)
+        mean_stab = (
+            sum(engine.stability.get(v, 0.0) for v in k.vertices) / max(len(k.vertices), 1)
+        )
 
-H = Hypergraph()
-v1 = H.add_vertex()
-v2 = H.add_vertex()
-H.add_causal_relation(v1, v2)
-H.add_hyperedge([v1, v2])
+        lifetimes.append({
+            "id": k.id,
+            "status": "alive",
+            "age": k.age,
+            "max_size": k.max_size,
+            "radius": k.radius,
+            "coherence": k.coherence,
+            "velocity": k.velocity,
+            "velocity_avg": k.velocity_avg,
+            "mass": k.mass,
+            "momentum": k.momentum,
+            "worldline_length": len(k.position_history),
+            "particle_candidate": is_particle,
+            "mean_stability": mean_stab,
+        })
 
-engine = RewriteEngine(H, seed=CONFIG["seed"])
-# Load particle tracks from previous run (if any)
-try:
-    with open("analysis/particles.json", "r") as f:
-        particles = json.load(f)
-except FileNotFoundError:
-    particles = []
+    os.makedirs("exports", exist_ok=True)
 
-# ============================================================
-# Diagnostics state
-# ============================================================
+    out_file = f"exports/particle_lifetimes_p{config.p_create:.2f}_s{config.seed}.json"
+    with open(out_file, "w") as f:
+        json.dump(lifetimes, f, indent=2)
 
-accepted = 0
-rejected = 0
+    out_ev = f"exports/interaction_events_p{config.p_create:.2f}_s{config.seed}.json"
+    with open(out_ev, "w") as f:
+        json.dump([ev.to_dict() for ev in engine.interaction_events], f, indent=2)
 
-last_k = H.average_coordination()
-last_L = H.max_chain_length()
-last_omega = hierarchical_closure(H, worldline_interaction_graph(H))
-
-# ============================================================
-# Time-series storage (for plotting)
-# ============================================================
-
-timeseries_t = []
-timeseries_k = []
-timeseries_omega = []
-
-start_time = time.time()
-
-# ============================================================
-# Run header
-# ============================================================
-
-run_timestamp = datetime.now().isoformat()
-
-print("\n" + "=" * 86)
-print(f"RUN STARTED: {run_timestamp}")
-print("=" * 86)
-
-print(
-    " time |   V   |  <k>  | Δ<k> |  L  | ΔL |"
-    "    Φ    |    Ψ    | acc%   |   omega   |   domega"
-)
-
-# ============================================================
-# Main evolution loop
-# ============================================================
-for _ in range(1, CONFIG["max_steps"] + 1):
-    success = engine.step()
-    if success:
-        accepted += 1
-        
-        update_particle_activity(engine, particles)
-    else:
-        rejected += 1
-
-    if engine.time % CONFIG["sample_interval"] != 0:
-        continue
-
-    inter = worldline_interaction_graph(H)
-
-    k = H.average_coordination()
-    L = H.max_chain_length()
-
-    dk = k - last_k
-    dL = L - last_L
-
-    omega = hierarchical_closure(H, inter)
-    domega = omega - last_omega
-
-    # --- store time series ---
-    timeseries_t.append(engine.time)
-    timeseries_k.append(k)
-    timeseries_omega.append(omega)
-
-    acc_ratio = accepted / max(accepted + rejected, 1)
-
+    particle_count = sum(1 for p in lifetimes if p["particle_candidate"])
+    print(f"Exported {len(engine.interaction_events)} interaction events to {out_ev}")
     print(
-        f"{engine.time:5d} | "
-        f"{len(H.vertices):5d} | "
-        f"{k:5.2f} | "
-        f"{dk:+5.2f} | "
-        f"{L:3d} | "
-        f"{dL:+3d} | "
-        f"{interaction_concentration(inter):7.4f} | "
-        f"{closure_density(inter):7.4f} | "
-        f"{acc_ratio:5.2%}   | "
-        f"{omega:7.4f} | "
-        f"{domega:+7.4f} |"
+        f"Exported {len(lifetimes)} worldlines "
+        f"({particle_count} candidates >= {tau_c}) to {out_file}"
     )
 
-    last_k = k
-    last_L = L
-    last_omega = omega
 
-# ============================================================
-# Run summary
-# ============================================================
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--steps", type=int, default=5000)
+    parser.add_argument("--p_create", type=float, default=0.60)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--sample_interval", type=int, default=1000)
+    parser.add_argument("--noise_bias", type=float, default=0.0)
+    parser.add_argument("--defect_injection", type=float, default=0.0)
+    parser.add_argument("--geometry_freeze", type=float, default=0.9)
+    config = parser.parse_args()
 
-end_time = time.time()
+    print("\n" + "=" * 86)
+    print(f"RUN STARTED (Python Engine) | Seed: {config.seed} | Steps: {config.steps}")
+    print("=" * 86)
 
-print("\nRun complete.")
-print(f"Total steps: {engine.time}")
-print(f"Accepted: {accepted}, Rejected: {rejected}")
-print(f"Acceptance ratio: {accepted / max(accepted + rejected, 1):.3f}")
-print(f"Wall time: {end_time - start_time:.2f} s")
+    H = Hypergraph()
+    v1 = H.add_vertex()
+    v2 = H.add_vertex()
+    H.add_causal_relation(v1, v2)
+    H.add_hyperedge([v1, v2])
 
-# ============================================================
-# Defect statistics
-# ============================================================
+    engine = RewriteEngine(H, p_create=config.p_create, seed=config.seed)
+    engine.params.noise_bias = config.noise_bias
+    engine.params.defect_injection = config.defect_injection
+    engine.DISTANCE_MEMORY_DECAY = config.geometry_freeze
+    engine.verbose = False
 
-print("\n================ DEFECT STATISTICS ================\n")
+    accepted = 0
+    rejected = 0
+    last_k = H.average_coordination()
+    last_L = H.max_chain_length()
+    last_omega = 0.0
 
-defects = engine.defect_log
-print(f"Total defects detected: {len(defects)}")
+    start_time = time.time()
+    last_print_time = time.time()
 
-if len(defects) > 1:
-    times = [d["time"] for d in defects]
-    spacings = [times[i + 1] - times[i] for i in range(len(times) - 1)]
+    print(" time  |   V   |  <k>  | Δ<k> |  L  | ΔL | acc%   | omega | knots | all_k | max_coh | step_ms")
 
-    print(f"Average defect spacing: {sum(spacings) / len(spacings):.2f} steps")
-    print(f"Min spacing: {min(spacings)}")
-    print(f"Max spacing: {max(spacings)}")
-    print("First 10 spacings:", spacings[:10])
+    for _ in range(1, config.steps + 1):
+        success = engine.step()
+        if success:
+            accepted += 1
+        else:
+            rejected += 1
 
-# ============================================================
-# Append time series to JSON (RUN-PRESERVING)
-# ============================================================
+        if engine.time % config.sample_interval != 0:
+            continue
 
-run_record = {
-    "run_started": run_timestamp,
-    "config": CONFIG,
-    "t": timeseries_t,
-    "k": timeseries_k,
-    "omega": timeseries_omega,
-    "defects": defects,
-    "rewrite_history": engine.rewrite_history,
-    "particle_activity": engine.particle_activity
-}
+        inter = worldline_interaction_graph(H, fraction=0.0)
+        k = H.average_coordination()
+        L = H.max_chain_length()
+        dk = k - last_k
+        dL = L - last_L
 
-try:
-    with open(CONFIG["timeseries_file"], "r") as f:
-        existing = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError):
-    existing = {}
+        omega = hierarchical_closure(H, inter)
+        total_attempts = accepted + rejected
+        acc_ratio = (accepted / total_attempts) if total_attempts > 0 else 0.0
 
-# ---- normalize structure ----
-if not isinstance(existing, dict):
-    existing = {}
+        valid_knots = sum(1 for knot in engine.active_knots.values() if knot.age >= 50 and knot.radius < 5.0)
+        total_knots = len(engine.active_knots)
 
-if "runs" not in existing or not isinstance(existing["runs"], list):
-    existing["runs"] = []
+        max_coh = 0.0
+        for v in H.vertices.keys():
+            neighbors = inter.get(v)
+            if not neighbors:
+                continue
+            neighborhood = set(neighbors)
+            neighborhood.add(v)
+            ie = 0
+            be = 0
+            for n in neighborhood:
+                for nn in inter.get(n, set()):
+                    if nn in neighborhood:
+                        ie += 1
+                    else:
+                        be += 1
+            ie //= 2
+            coh = (ie / be) if be > 0 else (10.0 if ie > 0 else 0.0)
+            if coh > max_coh:
+                max_coh = coh
 
-existing["runs"].append(run_record)
+        now = time.time()
+        step_ms = int((now - last_print_time) * 1000)
+        last_print_time = now
 
-with open(CONFIG["timeseries_file"], "w") as f:
-    json.dump(existing, f, indent=2)
+        print(
+            f"{engine.time:6d} | {len(H.vertices):5d} | {k:5.2f} | {dk:+5.2f} | "
+            f"{L:3d} | {dL:+3d} | {acc_ratio*100:5.1f}% | {omega:5.3f} | "
+            f"{valid_knots:5d} | {total_knots:5d} | {max_coh:7.3f} | {step_ms:7d}"
+        )
+
+        last_k = k
+        last_L = L
+        last_omega = omega
+
+    end_time = time.time() - start_time
+    print(f"\nSimulation loop ended. Wall time: {end_time:.2f} s")
+
+    save_data(engine, config)
+
+    print("\n" + "=" * 86)
+    print("FINISHED")
+
+
+if __name__ == "__main__":
+    main()

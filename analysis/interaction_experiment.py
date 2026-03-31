@@ -1,213 +1,124 @@
-# analysis/interaction_experiment.py
-
 import json
+import os
 import time
-import math
 
 from engine.hypergraph import Hypergraph
 from engine.rewrite_engine import RewriteEngine
-from engine.observables import (
-    worldline_interaction_graph,
-    hierarchical_closure,
-)
+from engine.observables import worldline_interaction_graph, hierarchical_closure
 
-# -------------------------------
-# Experiment parameters
-# -------------------------------
 STABILIZE_STEPS_BEFORE_PROBE = 150
-STABILIZE_STEPS_AFTER_PROBE = 300
 INTERACTION_STEPS = 1500
 OMEGA_TARGET = 1.10
 OMEGA_TOL = 0.05
 SEED = 1
 
-# -------------------------------
-# Geometry gating (CRITICAL)
-# -------------------------------
-MIN_XI_SUPPORT_FOR_GEOMETRY = 8
-MIN_CLUSTER_COUNT = 2
-GEOMETRY_START_DELAY = 50
 
-# 🔧 ADDITION (observer throttle only)
-GEOMETRY_STRIDE = 5       # compute geometry every N steps
-MAX_BFS_DEPTH = 32         # cap physical distance search
+def main():
+    H = Hypergraph()
+    v1 = H.add_vertex()
+    v2 = H.add_vertex()
+    H.add_causal_relation(v1, v2)
+    H.add_hyperedge([v1, v2])
 
+    engine = RewriteEngine(H, p_create=0.6, seed=SEED)
 
-# -------------------------------
-# Initialize universe
-# -------------------------------
-H = Hypergraph()
-v1 = H.add_vertex()
-v2 = H.add_vertex()
-H.add_causal_relation(v1, v2)
-H.add_hyperedge([v1, v2])
+    while True:
+        engine.step()
+        inter = worldline_interaction_graph(H, fraction=0.0)
+        omega = hierarchical_closure(H, inter)
+        if abs(omega - OMEGA_TARGET) < OMEGA_TOL:
+            break
 
-engine = RewriteEngine(
-    H,
-    seed=SEED,
-)
+    ok = engine.force_defect(magnitude=0.3, max_tries=30)
+    if not ok:
+        print("[warn] First proto-particle injection failed — continuing anyway")
 
-engine.topo_distance_memory = {}
-engine.xi_distance_memory = {}
+    first_injection_time = engine.time
 
-# -------------------------------
-# Reach target Ω
-# -------------------------------
-while True:
-    engine.step()
-    inter = worldline_interaction_graph(H)
-    Omega = hierarchical_closure(H, inter)
-    if abs(Omega - OMEGA_TARGET) < OMEGA_TOL:
-        break
+    for _ in range(STABILIZE_STEPS_BEFORE_PROBE):
+        engine.step()
 
+    if not engine.xi:
+        seed_v = next(iter(engine.H.vertices.keys()))
+        engine.xi[seed_v] = 0.2
+        print(f"[inject] re-seeded xi at v={seed_v}")
 
-# -------------------------------
-# Inject first proto-particle
-# -------------------------------
-ok = engine.force_defect(magnitude=0.3)
-if not ok:
-    print("[warn] First proto-particle injection failed — continuing anyway")
-
-first_injection_time = engine.time
-
-for _ in range(STABILIZE_STEPS_BEFORE_PROBE):
-    engine.step()
-
-
-# -------------------------------
-# Safety reseed (ξ must exist)
-# -------------------------------
-if not engine.xi:
-    seed_v = next(iter(engine.H.vertices.keys()))
-    engine.xi[seed_v] = 0.2
-    print(f"[inject] re-seeded ξ at v={seed_v}")
-
-
-# -------------------------------
-# Inject second proto-particle
-# -------------------------------
-ok = engine.force_second_proto_object(
-    omega_kick=0.3,
-    xi_seed=1.0,
-    min_distance=6,
-)
-
-if not ok:
-    print("[warn] Second proto-particle injection failed — continuing experiment")
-
-second_injection_time = engine.time
-
-
-# -------------------------------
-# Interaction observation
-# -------------------------------
-interaction_log = []
-
-for _ in range(INTERACTION_STEPS):
-    t0 = time.perf_counter()
-    
-    accepted = engine.step()
-    if engine.time % 200 == 0:
-        print(
-            f"[geom-live] topo={len(engine.topo_distance_memory)} "
-            f"xi={len(engine.xi_distance_memory)}"
-        )
-    
-    t1 = time.perf_counter()
-
-    # 🔧 ADDITION: reuse cached interaction graph if available
-    if hasattr(engine, "_cached_inter"):
-        inter = engine._cached_inter
-    else:
-        inter = worldline_interaction_graph(H)
-
-    # --------------------------------
-    # Geometry enable conditions
-    # --------------------------------
-    xi_mass = sum(
-        1 for x in engine.xi.values()
-        if x > engine.xi_threshold and math.isfinite(x)
+    ok = engine.force_second_proto_object(
+        omega_kick=0.3,
+        xi_seed=1.0,
+        min_distance=6,
+        max_tries=50,
     )
+    if not ok:
+        print("[warn] Second proto-particle injection failed — continuing experiment")
 
-    xi_support = {
-        v for v, x in engine.xi.items()
-        if x > engine.xi_threshold and math.isfinite(x)
-    }
-    # --------------------------------
-    # Read geometry from engine (OPTION B)
-    # --------------------------------
-    topo_geometry = {
-        f"{a},{b}": float(d)
-        for (a, b), d in engine.topo_distance_memory.items()
-    }
-    
-    xi_geometry = {
-        f"{a},{b}": float(d)
-        for (a, b), d in engine.xi_distance_memory.items()
-    }
-    xi_clusters = engine.xi_clusters(inter)
-    xi_cluster_sizes = {}
-    for v, cid in xi_clusters.items():
-        xi_cluster_sizes[cid] = xi_cluster_sizes.get(cid, 0) + 1
-        
-    # --------------------------------
-    # Sanity check (DEBUG ONLY)
-    # --------------------------------
-    if engine.time % 100 == 0:
-        print(
-            f"[geom-check] t={engine.time} "
-            f"topo_pairs={len(topo_geometry)} "
-            f"xi_pairs={len(xi_geometry)} "
-            f"xi_clusters={len(xi_cluster_sizes)}"
+    second_injection_time = engine.time
+
+    interaction_log = []
+
+    for _ in range(INTERACTION_STEPS):
+        t0 = time.perf_counter()
+        engine.step()
+
+        if engine.time % 200 == 0:
+            print(
+                f"[geom-live] topo={len(engine.topo_distance_memory)} "
+                f"xi={len(engine.xi_distance_memory)}"
+            )
+
+        t1 = time.perf_counter()
+        inter = worldline_interaction_graph(H, fraction=0.0)
+
+        xi_count = sum(
+            1 for x in engine.xi.values()
+            if x > engine.xi_threshold
         )
-    
-    # ---------------------------
-    # Log interaction snapshot
-    # ---------------------------
-    t2 = time.perf_counter()
-    interaction_log.append({
-        "t": engine.time,
-        "Ω": round(float(getattr(engine, "_cached_omega", 0.0)), 6),
-    
-        "xi": {
-            "count": sum(1 for x in engine.xi.values() if x > engine.xi_threshold),
-            "clusters": len(xi_cluster_sizes),
-            "largest_cluster": max(xi_cluster_sizes.values(), default=0),
-        },
-    
-        "geometry": {
-            "topo_pairs": len(engine.topo_distance_memory),
-            "xi_pairs": len(engine.xi_distance_memory),
-        },
-    
-        "graph": {
-            "vertices": len(engine.H.vertices),
-            "hyperedges": len(engine.H.hyperedges),
-            "interaction_nodes": len(inter),
-        }
-    })
-    t3 = time.perf_counter()
-    if engine.time % 100 == 0:
-        print(
-            f"[perf] t={engine.time} "
-            f"engine={(t1 - t0)*1000:.2f}ms "
-            f"observer={(t3 - t2)*1000:.2f}ms "
-            f"total={(t3 - t0)*1000:.2f}ms "
-        )
-# Save output
-# -------------------------------
-out = {
-    "metadata": {
-        "seed": SEED,
-        "omega_target": OMEGA_TARGET,
-        "interaction_steps": INTERACTION_STEPS,
-        "first_injection_time": first_injection_time,
-        "second_injection_time": second_injection_time,
-    },
-    "interaction_log": interaction_log,
-}
 
-with open("analysis/interaction_experiment.json", "w") as f:
-    json.dump(out, f, indent=2)
+        omega = hierarchical_closure(H, inter)
 
-print("Saved → analysis/interaction_experiment.json")
+        interaction_log.append({
+            "t": engine.time,
+            "Ω": round(float(omega), 6),
+            "xi": {
+                "count": xi_count,
+            },
+            "geometry": {
+                "topo_pairs": len(engine.topo_distance_memory),
+                "xi_pairs": len(engine.xi_distance_memory),
+            },
+            "graph": {
+                "vertices": len(engine.H.vertices),
+                "hyperedges": len(engine.H.hyperedges),
+                "interaction_nodes": len(inter),
+            },
+        })
+
+        t2 = time.perf_counter()
+        if engine.time % 100 == 0:
+            print(
+                f"[perf] t={engine.time} "
+                f"engine={(t1 - t0)*1000:.2f}ms "
+                f"observer={(t2 - t1)*1000:.2f}ms "
+                f"total={(t2 - t0)*1000:.2f}ms"
+            )
+
+    out = {
+        "metadata": {
+            "seed": SEED,
+            "omega_target": OMEGA_TARGET,
+            "interaction_steps": INTERACTION_STEPS,
+            "first_injection_time": first_injection_time,
+            "second_injection_time": second_injection_time,
+        },
+        "interaction_log": interaction_log,
+    }
+
+    os.makedirs("exports", exist_ok=True)
+    with open("exports/interaction_experiment.json", "w") as f:
+        json.dump(out, f, indent=2)
+
+    print("Saved -> exports/interaction_experiment.json")
+
+
+if __name__ == "__main__":
+    main()

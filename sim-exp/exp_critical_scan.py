@@ -14,7 +14,9 @@ def run_universe(p_create, steps=10000, seed=0):
     H.add_hyperedge([v1, v2])
 
     engine = RewriteEngine(H, p_create=p_create, seed=seed)
-    engine.run(steps)
+    engine.verbose = False
+    for _ in range(steps):
+        engine.step()
 
     k_avg = average_coordination(H)
     dim = myrheim_meyer_dimension(H, samples=800, min_interval=20)
