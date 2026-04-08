@@ -1,4 +1,10 @@
-# 🌀 HCSN — Hierarchical Causal Structure Network
+# 🌀 HCSN — Hierarchical Causal Structure Network (Legacy Implementation)
+
+> [!CAUTION]
+> ### 🏛️ Legacy / Reference Implementation
+> This Python-based engine is now **LEGACY**. Due to **Python execution bottlenecks** in high-density causal graphs (Phase 10+), core development has migrated to the high-performance **[hcsn-rust](../hcsn-rust/)** engine. 
+> 
+> **Note:** Features are only backported to this repository if specifically required for cross-validation. For active research and the latest Phase 12 results, please use the **Rust Core**.
 
 [![DOI](https://img.shields.io/badge/DOI-10.55277%2Fresearchhub.fvahxvpt.1-blue)](https://doi.org/10.55277/researchhub.fvahxvpt.1)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
